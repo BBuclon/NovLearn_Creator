@@ -1,4 +1,4 @@
-﻿import { supabase } from "../supabaseClient";
+import { supabase } from "../supabaseClient";
 
 // ------------------------------------------------------------------
 // Cache en mémoire (RAM) – TTL : 1 heure

@@ -1,193 +1,193 @@
-import React from 'react';
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 
-export const ProbaTreeEditor = ({ content, onChange }) => {
-  // Si le content est vide ou invalide, initialiser avec un arbre vide (juste la racine)
-  React.useEffect(() => {
-    if (!content || !content.nodes || content.nodes.length === 0) {
-      const defaultTree = {
-        nodes: [
-          { id: 0, label: 'Départ', x: 50, y: 150, isRoot: true }
-        ]
-      };
-      onChange(defaultTree);
-    }
-  }, []);
+const ROOT_NODE = { id: 0, label: "Départ", isRoot: true };
 
-  const updateNode = (nodeId, field, value) => {
-    const newNodes = content.nodes.map(node =>
-      node.id === nodeId ? { ...node, [field]: value } : node
-    );
-    onChange({ nodes: newNodes });
-  };
-  
+/**
+ * Modèle : content.nodes = [{ id, label, isRoot? , parent?, proba? }]
+ * Un nœud sans `parent` (ou avec isRoot) est une racine.
+ */
+const normalize = (content) => ({
+  showPathProbabilities: false,
+  ...content,
+  nodes: Array.isArray(content?.nodes) && content.nodes.length > 0 ? content.nodes : [ROOT_NODE],
+});
+
+export const ProbaTreeEditor = ({ content, onUpdate }) => {
+  const safeContent = normalize(content);
+  const nodes = safeContent.nodes;
+
+  const update = (patch) => onUpdate({ ...safeContent, ...patch });
+
+  const updateNode = (nodeId, field, value) =>
+    update({ nodes: nodes.map((n) => (n.id === nodeId ? { ...n, [field]: value } : n)) });
+
   const deleteNode = (nodeId) => {
-    // Supprimer le nœud et tous ses enfants récursivement
-    const nodesToDelete = new Set([nodeId]);
-    let hasChanges = true;
-    
-    while (hasChanges) {
-      hasChanges = false;
-      content.nodes.forEach(node => {
-        if (node.parent !== undefined && nodesToDelete.has(node.parent) && !nodesToDelete.has(node.id)) {
-          nodesToDelete.add(node.id);
-          hasChanges = true;
+    // Supprime le nœud et toute sa descendance
+    const toDelete = new Set([nodeId]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      nodes.forEach((n) => {
+        if (n.parent !== undefined && toDelete.has(n.parent) && !toDelete.has(n.id)) {
+          toDelete.add(n.id);
+          changed = true;
         }
       });
     }
-    
-    const newNodes = content.nodes.filter(node => !nodesToDelete.has(node.id));
-    onChange({ nodes: newNodes });
+    update({ nodes: nodes.filter((n) => !toDelete.has(n.id)) });
   };
-  
+
   const addChild = (parentId) => {
-    const parent = content.nodes.find(n => n.id === parentId);
-    if (!parent) return;
-    
-    // Compter les enfants existants pour positionner le nouveau
-    const siblings = content.nodes.filter(n => n.parent === parentId);
-    const newId = Math.max(...content.nodes.map(n => n.id), 0) + 1;
-    
-    const newNode = {
-      id: newId,
-      label: `Branche ${siblings.length + 1}`,
-      x: parent.x + 150,
-      y: parent.y + (siblings.length * 80) - 40,
-      parent: parentId,
-      proba: '0.5'
-    };
-    
-    onChange({ nodes: [...content.nodes, newNode] });
-  };
-  
-  const resetTree = () => {
-    const defaultTree = {
+    const siblings = nodes.filter((n) => n.parent === parentId);
+    const newId = Math.max(0, ...nodes.map((n) => Number(n.id) || 0)) + 1;
+    update({
       nodes: [
-        { id: 0, label: 'Départ', x: 50, y: 150, isRoot: true }
-      ]
-    };
-    onChange(defaultTree);
-  };
-  
-  // Organiser les nœuds par niveau
-  const nodesByLevel = {};
-  if (content && content.nodes) {
-    content.nodes.forEach(node => {
-      let level = 0;
-      let current = node;
-      while (current && current.parent !== undefined) {
-        level++;
-        current = content.nodes.find(n => n.id === current.parent);
-        if (!current) break;
-      }
-      if (!nodesByLevel[level]) nodesByLevel[level] = [];
-      nodesByLevel[level].push(node);
+        ...nodes,
+        {
+          id: newId,
+          label: `Branche ${siblings.length + 1}`,
+          parent: parentId,
+          proba: "0.5",
+        },
+      ],
     });
-  }
-  
-  // Vérifier si le content est valide
-  if (!content || !content.nodes) {
-    return <div>Chargement...</div>;
-  }
+  };
+
+  const resetTree = () => update({ nodes: [ROOT_NODE] });
+
+  // Regroupement par niveau (profondeur)
+  const depthOf = (node) => {
+    let depth = 0;
+    let current = node;
+    let guard = 0;
+    while (current && current.parent !== undefined && guard++ < 100) {
+      current = nodes.find((n) => n.id === current.parent);
+      if (current) depth++;
+    }
+    return depth;
+  };
+  const nodesByLevel = {};
+  nodes.forEach((node) => {
+    const level = depthOf(node);
+    (nodesByLevel[level] ||= []).push(node);
+  });
+  const levels = Object.keys(nodesByLevel).sort((a, b) => Number(a) - Number(b));
 
   return (
-    <div className="proba-tree-editor">
-      <div className="flex items-center justify-between mb-3">
-        <label className="editor-label">
-          Configuration de l'arbre
-          <span className="label-hint">Construisez votre arbre niveau par niveau</span>
-        </label>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="block text-sm font-medium">Configuration de l'arbre</label>
+          <span className="text-xs text-gray-500">
+            Construisez votre arbre niveau par niveau. Labels et probabilités acceptent{" "}
+            <code>@a</code> et le LaTeX (<code>$\bar&#123;A&#125;$</code>, <code>\frac&#123;1&#125;&#123;3&#125;</code>).
+          </span>
+        </div>
         <button
+          type="button"
           onClick={resetTree}
-          className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+          className="flex items-center gap-1 px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
         >
-          🔄 Réinitialiser
+          <RotateCcw size={14} /> Réinitialiser
         </button>
       </div>
-      
-      <div className="tree-levels-container space-y-4">
-        {Object.keys(nodesByLevel).sort((a, b) => parseInt(a) - parseInt(b)).map(level => (
-          <div key={level} className="tree-level">
-            <div className="level-header mb-2 pb-2 border-b border-gray-200">
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={!!safeContent.showPathProbabilities}
+          onChange={(e) => update({ showPathProbabilities: e.target.checked })}
+        />
+        Afficher la probabilité de chaque chemin (feuilles)
+      </label>
+
+      <div className="space-y-4">
+        {levels.map((level) => (
+          <div key={level}>
+            <div className="mb-2 pb-1 border-b border-gray-200 text-sm">
               <span className="font-bold text-purple-700">
-                {level === '0' ? '🌳 Racine' : `📊 Niveau ${level}`}
+                {level === "0" ? "🌳 Racine" : `📊 Niveau ${level}`}
               </span>
-              <span className="text-sm text-gray-500 ml-2">
-                ({nodesByLevel[level].length} nœud{nodesByLevel[level].length > 1 ? 's' : ''})
+              <span className="text-gray-500 ml-2">
+                ({nodesByLevel[level].length} nœud{nodesByLevel[level].length > 1 ? "s" : ""})
               </span>
             </div>
-            
-            <div className="tree-nodes-list space-y-2">
-              {nodesByLevel[level].map((node) => (
-                <div key={node.id} className="tree-node-item border-2 border-purple-200 rounded-lg p-3 bg-white hover:bg-purple-50 transition-colors">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs font-mono bg-purple-100 px-2 py-1 rounded">
-                          ID:{node.id}
-                        </span>
-                        <input
-                          className="flex-1 p-2 border rounded focus:ring-2 focus:ring-purple-300"
-                          placeholder="Label du nœud"
-                          value={node.label || ''}
-                          onChange={(e) => updateNode(node.id, 'label', e.target.value)}
-                          disabled={node.isRoot}
-                        />
-                        {!node.isRoot && (
+
+            <div className="space-y-2">
+              {nodesByLevel[level].map((node) => {
+                const parent = nodes.find((n) => n.id === node.parent);
+                return (
+                  <div
+                    key={node.id}
+                    className="border-2 border-purple-200 rounded-lg p-3 bg-white hover:bg-purple-50 transition-colors"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-mono bg-purple-100 px-2 py-1 rounded">
+                            #{node.id}
+                          </span>
                           <input
-                            className="w-24 p-2 border rounded focus:ring-2 focus:ring-purple-300"
-                            placeholder="Proba"
-                            value={node.proba || ''}
-                            onChange={(e) => updateNode(node.id, 'proba', e.target.value)}
+                            className="flex-1 p-2 border rounded text-sm"
+                            placeholder="Label du nœud"
+                            value={node.label || ""}
+                            onChange={(e) => updateNode(node.id, "label", e.target.value)}
                           />
+                          {!node.isRoot && node.parent !== undefined && (
+                            <input
+                              className="w-28 p-2 border rounded text-sm font-mono"
+                              placeholder="Proba"
+                              value={node.proba || ""}
+                              onChange={(e) => updateNode(node.id, "proba", e.target.value)}
+                            />
+                          )}
+                        </div>
+                        {parent && (
+                          <div className="text-xs text-gray-500 ml-1">
+                            ↳ Parent :{" "}
+                            <span className="font-medium text-purple-600">
+                              {parent.label || `#${parent.id}`}
+                            </span>
+                          </div>
                         )}
                       </div>
-                      
-                      {node.parent !== undefined && (
-                        <div className="text-xs text-gray-500 ml-2">
-                          ↳ Parent: <span className="font-medium text-purple-600">
-                            {content.nodes.find(n => n.id === node.parent)?.label || 'Nœud #' + node.parent}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-col gap-1">
-                      <button
-                        onClick={() => addChild(node.id)}
-                        className="p-2 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs font-medium transition-colors"
-                        title="Ajouter un enfant"
-                      >
-                        + Enfant
-                      </button>
-                      {!node.isRoot && (
+
+                      <div className="flex flex-col gap-1">
                         <button
-                          onClick={() => deleteNode(node.id)}
-                          className="p-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium transition-colors"
-                          title="Supprimer ce nœud et ses enfants"
+                          type="button"
+                          onClick={() => addChild(node.id)}
+                          className="flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs font-medium"
+                          title="Ajouter un enfant"
                         >
-                          🗑️ Suppr.
+                          <Plus size={12} /> Enfant
                         </button>
-                      )}
+                        {!node.isRoot && node.parent !== undefined && (
+                          <button
+                            type="button"
+                            onClick={() => deleteNode(node.id)}
+                            className="flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs font-medium"
+                            title="Supprimer ce nœud et ses enfants"
+                          >
+                            <Trash2 size={12} /> Suppr.
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}
       </div>
-      
-      {content.nodes.length === 1 && (
-        <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg text-center">
-          <p className="text-blue-800 font-medium mb-2">
-            🌱 Commencez par ajouter des enfants au nœud racine "Départ"
-          </p>
+
+      {nodes.length === 1 && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-center text-sm text-blue-800">
+          🌱 Commencez par ajouter des enfants au nœud racine « {nodes[0].label} »
         </div>
       )}
-      
-      <div className="editor-hint mt-4">
-        💡 Cliquez sur "+ Enfant" pour créer une branche. Les nœuds enfants héritent automatiquement de leur position.
-      </div>
     </div>
   );
 };
+
+export default ProbaTreeEditor;

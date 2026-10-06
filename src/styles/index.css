@@ -1,4 +1,23 @@
-/* Fichier principal qui importe tous les autres */
-@import './base.css';
-@import './components.css';
-@import './utilities.css';
+@import "tailwindcss";
+
+/* Réglages globaux au-dessus du preflight Tailwind */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  background: linear-gradient(to bottom right, #eff6ff, #eef2ff, #faf5ff);
+  min-height: 100vh;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  background-color: white;
+}
+
+textarea {
+  resize: none;
+}

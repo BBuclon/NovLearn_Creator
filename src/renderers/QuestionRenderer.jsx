@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import MathText from '../utils/mathRenderer';
 import { HelpCircle, Lightbulb, Info } from 'lucide-react';
 

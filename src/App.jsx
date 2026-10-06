@@ -1,5 +1,4 @@
 import { useState } from "react";
-// On a retiré 'Save' des imports car on ne l'utilise plus ici
 import ElementList from "./components/ElementList";
 import ExerciseInfo from "./components/ExerciseInfo";
 import ExercisePreview from "./components/ExercisePreview";
@@ -15,13 +14,13 @@ const App = () => {
   const [showTaxonomyManager, setShowTaxonomyManager] = useState(false);
 
   const {
-    exercises,
     currentExercise,
     setCurrentExercise,
     addElement,
     updateElement,
     deleteElement,
     loadExercise,
+    resetExercise,
   } = useExercises();
 
   const {
@@ -34,68 +33,64 @@ const App = () => {
     regenerateValues,
   } = useVariables(currentExercise, setCurrentExercise);
 
+  if (showTaxonomyManager) {
+    return <TaxonomyManager onClose={() => setShowTaxonomyManager(false)} />;
+  }
+
   return (
-    <>
-      {showTaxonomyManager && (
-        <TaxonomyManager onClose={() => setShowTaxonomyManager(false)} />
-      )}
-      {!showTaxonomyManager && (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
-          <div className="max-w-7xl mx-auto">
-            <Header
-              previewMode={previewMode}
-              setPreviewMode={setPreviewMode}
-              hasVariables={currentExercise.variables.length > 0}
-              onRegenerate={regenerateValues}
-              currentExercise={currentExercise}
-              onLoadExercise={loadExercise} // <--- AJOUT : On la passe au Header
-              onOpenTaxonomy={() => setShowTaxonomyManager(true)}
-            />
+    <div className="min-h-screen p-6">
+      <div className="max-w-7xl mx-auto">
+        <Header
+          previewMode={previewMode}
+          setPreviewMode={setPreviewMode}
+          hasVariables={currentExercise.variables.length > 0}
+          onRegenerate={regenerateValues}
+          currentExercise={currentExercise}
+          onLoadExercise={loadExercise}
+          onPublished={() => {
+            resetExercise();
+            setPreviewMode(false);
+          }}
+          onOpenTaxonomy={() => setShowTaxonomyManager(true)}
+        />
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              <div className="lg:col-span-3 bg-white rounded-xl shadow-lg p-6">
-                {!previewMode ? (
-                  <div className="space-y-6">
-                    <ExerciseInfo
-                      currentExercise={currentExercise}
-                      setCurrentExercise={setCurrentExercise}
-                    />
-
-                    <VariableManager
-                      currentExercise={currentExercise}
-                      generatedValues={generatedValues}
-                      addVariable={addVariable}
-                      addDoublet={addDoublet}
-                      addTriplet={addTriplet}
-                      updateVariable={updateVariable}
-                      deleteVariable={deleteVariable}
-                    />
-
-                    <ElementList
-                      currentExercise={currentExercise}
-                      setCurrentExercise={setCurrentExercise}
-                      updateElement={updateElement}
-                      deleteElement={deleteElement}
-                      addElement={addElement}
-                    />
-
-                    {/* L'ancien bouton "Sauvegarder" a été supprimé ici */}
-                  </div>
-                ) : (
-                  <ExercisePreview
-                    currentExercise={currentExercise}
-                    generatedValues={generatedValues}
-                  />
-                )}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3 bg-white rounded-xl shadow-lg p-6">
+            {!previewMode ? (
+              <div className="space-y-6">
+                <ExerciseInfo
+                  currentExercise={currentExercise}
+                  setCurrentExercise={setCurrentExercise}
+                />
+                <VariableManager
+                  currentExercise={currentExercise}
+                  generatedValues={generatedValues}
+                  addVariable={addVariable}
+                  addDoublet={addDoublet}
+                  addTriplet={addTriplet}
+                  updateVariable={updateVariable}
+                  deleteVariable={deleteVariable}
+                />
+                <ElementList
+                  currentExercise={currentExercise}
+                  setCurrentExercise={setCurrentExercise}
+                  updateElement={updateElement}
+                  deleteElement={deleteElement}
+                  addElement={addElement}
+                />
               </div>
-
-              {/* On ne passe plus exportJSON à la Sidebar */}
-              <Sidebar exercises={exercises} />
-            </div>
+            ) : (
+              <ExercisePreview
+                currentExercise={currentExercise}
+                generatedValues={generatedValues}
+              />
+            )}
           </div>
+
+          <Sidebar />
         </div>
-      )}
-    </>
+      </div>
+    </div>
   );
 };
 

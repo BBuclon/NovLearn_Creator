@@ -1,3 +1,5 @@
+import ComplexPlaneRenderer from "./ComplexPlaneRenderer";
+import DiscreteGraphRenderer from "./DiscreteGraphRenderer";
 import EquationRenderer from "./EquationRenderer";
 import GraphRenderer from "./GraphRenderer";
 import MCQRenderer from "./MCQRenderer";
@@ -9,35 +11,39 @@ import TextRenderer from "./TextRenderer";
 import VariationTableRenderer from "./VariationTableRenderer";
 import VectorRenderer from "./VectorRenderer";
 
-const ElementRenderer = ({ element, variables }) => {
-  const { type, content } = element;
+const RENDERERS = {
+  text: TextRenderer,
+  equation: EquationRenderer,
+  graph: GraphRenderer,
+  question: QuestionRenderer,
+  mcq: MCQRenderer,
+  signTable: SignTableRenderer,
+  variationTable: VariationTableRenderer,
+  statsTable: StatsTableRenderer,
+  probaTree: ProbaTreeRenderer,
+  vector: VectorRenderer,
+  complexPlane: ComplexPlaneRenderer,
+  discreteGraph: DiscreteGraphRenderer,
+};
 
-  // On passe systématiquement 'variables' à tous les renderers
-  switch (type) {
-    case "text":
-      return <TextRenderer content={content} variables={variables} />;
-    case "equation":
-      return <EquationRenderer content={content} variables={variables} />;
-    case "graph":
-      return <GraphRenderer content={content} variables={variables} />;
-    case "question":
-      return <QuestionRenderer content={content} variables={variables} />;
-    case "signTable":
-      return <SignTableRenderer content={content} variables={variables} />;
-    case "variationTable":
-      return <VariationTableRenderer content={content} variables={variables} />;
-    case "statsTable":
-      return <StatsTableRenderer content={content} variables={variables} />;
-    case "probaTree":
-      return <ProbaTreeRenderer content={content} variables={variables} />;
-    case "vector":
-      return <VectorRenderer content={content} variables={variables} />;
-    case "mcq":
-      return <MCQRenderer content={content} variables={variables} />;
-    default:
-      console.warn(`Type d'élément non supporté dans le rendu : ${type}`);
-      return null;
+/**
+ * Dispatch par type. Tous les renderers reçoivent `content` et `variables`
+ * (les valeurs générées pour les @variables).
+ */
+const ElementRenderer = ({ element, variables = {} }) => {
+  const { type, content } = element;
+  const Renderer = RENDERERS[type];
+
+  if (!Renderer) {
+    console.warn(`Type d'élément non supporté dans le rendu : ${type}`);
+    return (
+      <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+        Type d'élément inconnu : <code>{type}</code>
+      </div>
+    );
   }
+
+  return <Renderer content={content || {}} variables={variables} />;
 };
 
 export default ElementRenderer;

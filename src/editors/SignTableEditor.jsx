@@ -2,6 +2,11 @@ import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 
 const SignTableEditor = ({ content, onUpdate }) => {
+  // Ancien format : le signe était porté par chaque point (signAfter / signNext)
+  const legacySigns = content?.points
+    ? content.points.slice(0, -1).map((pt) => pt.signAfter ?? pt.signNext ?? "+")
+    : ["+", "-"];
+
   const safeContent = {
     variable: "x",
     function: "f(x)",
@@ -10,17 +15,8 @@ const SignTableEditor = ({ content, onUpdate }) => {
       { x: "x_1", type: "zero" },
       { x: "+\\infty", type: "boundary" },
     ],
-    signs: ["+", "-"],
-    // Compatibilité ancien format
     ...content,
-    // Si l'ancien format est utilisé, reconstruire signs depuis signAfter
-    signs:
-      content?.signs ??
-      (content?.points
-        ? content.points
-            .slice(0, -1)
-            .map((pt) => pt.signAfter ?? pt.signNext ?? "+")
-        : ["+", "-"]),
+    signs: content?.signs ?? legacySigns,
   };
 
   const updateField = (field, value) =>

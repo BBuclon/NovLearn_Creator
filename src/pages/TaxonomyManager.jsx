@@ -13,8 +13,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { invalidateTaxonomyCache } from "../constants";
-import { supabase } from "../supabaseClient";
-import { supabaseAdmin } from "../supabaseAdmin"; // Ajoute cette ligne !
+import { supabaseAdmin } from "../supabaseAdmin";
 
 /* ─────────────────────────────────────────────
    Styles utilitaires (inline) pour éviter de

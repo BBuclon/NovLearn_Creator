@@ -1,168 +1,103 @@
-import { useState } from 'react';
-import { getDefaultContent } from '../utils/defaultContent';
-import { exportToJSON, exportAllInOne, importFromJSON } from '../utils/exportUtils';
+import { useCallback, useState } from "react";
+import { getDefaultContent } from "../utils/defaultContent";
 
-export const useExercises = () => {
-  const [exercises, setExercises] = useState([]);
-  const [currentExercise, setCurrentExercise] = useState({
-    title: '',
-    apptitle: '',
-    difficulty: 'Facile',
-    chapter: 'Analyse',
-    competences: [],
-    variables: [],
-    elements: []
-  });
+export const createEmptyExercise = () => ({
+  title: "",
+  appTitle: "",
+  difficulty: "Facile",
+  chapter: "",
+  competences: [],
+  variables: [],
+  elements: [],
+  Is_Flash: false,
+  Need_Calculator: false,
+});
 
-  const addElement = (type) => {
-    const newElement = {
-      id: Date.now(),
-      type,
-      content: getDefaultContent(type)
-    };
-    setCurrentExercise({
-      ...currentExercise,
-      elements: [...currentExercise.elements, newElement]
-    });
-  };
+/** Identifiant numérique unique dans une liste (les ids sont stockés dans le JSON en BDD). */
+const nextId = (items) =>
+  Math.max(Date.now(), ...items.map((it) => (Number(it.id) || 0) + 1));
 
-  const updateElement = (id, content) => {
-    setCurrentExercise({
-      ...currentExercise,
-      elements: currentExercise.elements.map(el => 
-        el.id === id ? { ...el, content } : el
-      )
-    });
-  };
-
-  const deleteElement = (id) => {
-    setCurrentExercise({
-      ...currentExercise,
-      elements: currentExercise.elements.filter(el => el.id !== id)
-    });
-  };
-
-  const moveElement = (fromIndex, toIndex) => {
-    const newElements = [...currentExercise.elements];
-    const [removed] = newElements.splice(fromIndex, 1);
-    newElements.splice(toIndex, 0, removed);
-    setCurrentExercise({
-      ...currentExercise,
-      elements: newElements
-    });
-  };
-  
-  const saveExercise = () => {
-    if (currentExercise.title && currentExercise.elements.length > 0) {
-      const exerciseToSave = {
-        id: Date.now(),
-        title: currentExercise.title,
-        appTitle: currentExercise.appTitle || currentExercise.title, 
-        chapter: currentExercise.chapter,
-        difficulty: currentExercise.difficulty,
-        competences: currentExercise.competences || [],
-        variables: currentExercise.variables || [],
-        elements: currentExercise.elements || []
-      };
-      
-      setExercises([...exercises, exerciseToSave]);
-      
-      // Réinitialiser pour un nouvel exercice
-      setCurrentExercise({
-        title: '',
-        difficulty: 'Facile',
-        chapter: 'Analyse',
-        competences: [],
-        variables: [],
-        elements: []
-      });
-      
-      alert('✅ Exercice sauvegardé !');
-      return true;
-    } else {
-      alert('⚠️ Veuillez ajouter un titre et au moins un élément');
-      return false;
-    }
-  };
-
-  const loadExercise = (exercise, preserveId = false) => {
-    setCurrentExercise({
-      ...exercise,
-      // Si preserveId est vrai, on garde l'ID de la BDD, sinon on le vire pour créer une copie
-      id: preserveId ? exercise.id : undefined 
-    });
-  };
-
-  const deleteExercise = (id) => {
-    setExercises(exercises.filter(ex => ex.id !== id));
-  };
-
-  const duplicateExercise = (id) => {
-    const exerciseToDuplicate = exercises.find(ex => ex.id === id);
-    if (exerciseToDuplicate) {
-      const duplicated = {
-        ...exerciseToDuplicate,
-        id: Date.now(),
-        title: `${exerciseToDuplicate.title} (copie)`
-      };
-      setExercises([...exercises, duplicated]);
-    }
-  };
-
-  const exportExercises = (includeAnswers = true, prettify = true, mode = 'multiple') => {
-    if (exercises.length === 0) {
-      alert('⚠️ Aucun exercice à exporter');
-      return;
-    }
-
-    if (mode === 'multiple') {
-      exportToJSON(exercises, includeAnswers, prettify);
-      alert(`📥 Export de ${exercises.length} fichier(s) lancé !`);
-    } else {
-      const version = includeAnswers ? 'prof' : 'eleve';
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `exercices_${version}_${timestamp}.json`;
-      exportAllInOne(exercises, filename, includeAnswers, prettify);
-      alert(`📥 Exercices exportés dans ${filename}`);
-    }
-  };
-
-  const importExercises = async (file) => {
-    try {
-      const imported = await importFromJSON(file);
-      
-      const hasAnswers = imported.some(ex => 
-        ex.elements?.some(el => 
-          (el.type === 'equation' && el.content?.correctAnswer) ||
-          (el.type === 'question' && el.content?.answer) ||
-          (el.type === 'mcq' && el.content?.correctAnswers)
-        )
-      );
-      
-      setExercises(prev => [...prev, ...imported]);
-      
-      alert(`✅ ${imported.length} exercice(s) importé(s) ${hasAnswers ? 'avec' : 'sans'} corrections !`);
-    } catch (error) {
-      alert('❌ Erreur lors de l\'import : ' + error.message);
-    }
-  };
-
+/**
+ * Normalise un exercice venant de l'API / d'un import :
+ * champs manquants, ancien nommage (variableDefinitions, app_title, apptitle).
+ */
+export const normalizeExercise = (exercise, preserveId = false) => {
+  const ex = exercise || {};
+  const {
+    apptitle: _apptitle,
+    app_title: _appTitleSnake,
+    variableDefinitions: _legacyVars,
+    ...rest
+  } = ex;
 
   return {
-    exercises,
+    ...createEmptyExercise(),
+    ...rest,
+    id: preserveId ? ex.id : undefined,
+    appTitle: ex.appTitle ?? ex.app_title ?? ex.apptitle ?? "",
+    competences: Array.isArray(ex.competences) ? ex.competences : [],
+    variables: Array.isArray(ex.variables)
+      ? ex.variables
+      : Array.isArray(ex.variableDefinitions)
+        ? ex.variableDefinitions
+        : [],
+    elements: Array.isArray(ex.elements) ? ex.elements : [],
+  };
+};
+
+export const useExercises = () => {
+  const [currentExercise, setCurrentExercise] = useState(createEmptyExercise);
+
+  const addElement = useCallback((type) => {
+    setCurrentExercise((prev) => ({
+      ...prev,
+      elements: [
+        ...prev.elements,
+        { id: nextId(prev.elements), type, content: getDefaultContent(type) },
+      ],
+    }));
+  }, []);
+
+  const updateElement = useCallback((id, content) => {
+    setCurrentExercise((prev) => ({
+      ...prev,
+      elements: prev.elements.map((el) => (el.id === id ? { ...el, content } : el)),
+    }));
+  }, []);
+
+  const deleteElement = useCallback((id) => {
+    setCurrentExercise((prev) => ({
+      ...prev,
+      elements: prev.elements.filter((el) => el.id !== id),
+    }));
+  }, []);
+
+  const moveElement = useCallback((fromIndex, toIndex) => {
+    setCurrentExercise((prev) => {
+      const elements = [...prev.elements];
+      const [removed] = elements.splice(fromIndex, 1);
+      elements.splice(toIndex, 0, removed);
+      return { ...prev, elements };
+    });
+  }, []);
+
+  /** Charge un exercice ; preserveId=true pour éditer l'original, false pour une copie. */
+  const loadExercise = useCallback((exercise, preserveId = false) => {
+    setCurrentExercise(normalizeExercise(exercise, preserveId));
+  }, []);
+
+  const resetExercise = useCallback(() => {
+    setCurrentExercise(createEmptyExercise());
+  }, []);
+
+  return {
     currentExercise,
     setCurrentExercise,
     addElement,
     updateElement,
     deleteElement,
     moveElement,
-    saveExercise,
     loadExercise,
-    deleteExercise,
-    duplicateExercise,
-    exportExercises,
-    importExercises,
-    exportJSON: exportExercises,
-    importJSON: importExercises,
+    resetExercise,
   };
 };

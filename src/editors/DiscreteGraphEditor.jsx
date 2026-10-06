@@ -89,8 +89,8 @@ const DiscreteGraphEditor = ({ content = {}, onUpdate }) => {
             placeholder="Ex: n^2 / (n + 1)"
           />
           <p className="text-xs text-gray-600 mt-1">
-            Utilisez n pour l'indice. Variables sans {}. 
-            Math.sin(n), Math.pow(2, n), etc.
+            Utilisez <code>n</code> pour l'indice et <code>@a</code> pour les variables.
+            Ex : <code>@a*n + @b</code>, <code>2^n</code>, <code>sqrt(n)</code>, <code>sin(n)</code>.
           </p>
         </div>
       )}

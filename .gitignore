@@ -2,3 +2,17 @@
 /dist
 .env
 repomix-output.xml
+
+# Environment variants (keep the sanitized template)
+.env.*
+!.env.example
+
+# Local caches, logs and editor files
+.vite/
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp

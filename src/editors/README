@@ -1,54 +1,24 @@
 # 📝 Éditeurs d'éléments
 
-## But
+Un éditeur par type d'élément. Contrat : `({ content, onUpdate })`, `onUpdate` reçoit le
+nouveau `content` complet (mise à jour immuable : `onUpdate({ ...content, champ: valeur })`).
+Chaque éditeur doit tolérer un `content` incomplet (pattern `safeContent`).
 
-Contient tous les composants React permettant à l'utilisateur de créer et modifier le contenu des exercices.
+Syntaxe dans les champs texte : `@a` pour les variables, `$...$` pour le LaTeX.
 
-Chaque éditeur permet de configurer un type d'élément spécifique avec **support complet de LaTeX**.
+| Fichier | Type | Notes |
+|---------|------|-------|
+| TextEditor.jsx | text | Énoncé libre |
+| EquationEditor.jsx | equation | Une ligne LaTeX, rendue en bloc |
+| GraphEditor.jsx | graph | Fonctions `f(x)`, bornes fixes / auto / expressions `@a-1` |
+| QuestionEditor.jsx | question | Formats : nombre, ensemble, intervalle, formule, texte |
+| MCQEditor.jsx | mcq | Une ou plusieurs bonnes réponses |
+| SignTableEditor.jsx | signTable | Points (borne / zéro / interdit) + signes |
+| VariationTableEditor.jsx | variationTable | Points (haut / bas / milieu / interdit) |
+| StatsTableEditor.jsx | statsTable | Tableau libre, cellules LaTeX |
+| ProbaTreeEditor.jsx | probaTree | Arbre de nœuds `{ id, label, parent, proba }` |
+| VectorEditor.jsx | vector | 2D / 3D, coordonnées = expressions |
+| ComplexPlaneEditor.jsx | complexPlane | Points `re + im·i` |
+| DiscreteGraphEditor.jsx | discreteGraph | Suite explicite / récurrente / manuelle |
 
-## 📐 Support LaTeX
-
-**Tous les éditeurs supportent la syntaxe LaTeX !**
-
-- Utilisez `{variable}` pour les valeurs dynamiques
-- Utilisez `$...$` pour les formules LaTeX inline
-- Combinez les deux : `$f({a}) = {a}x^2 + {b}x + {c}$`
-
-📖 Consultez **[GUIDE_LATEX.md](../../GUIDE_LATEX.md)** pour la documentation complète.
-
-## 🔧 Éditeurs disponibles
-
-### Texte et expressions
-
-- **TextEditor.jsx** - Texte enrichi avec LaTeX et variables
-- **FunctionEditor.jsx** - Fonctions mathématiques (expressions LaTeX)
-- **EquationEditor.jsx** - Équations simples et systèmes (LaTeX)
-
-### Questions
-
-- **QuestionEditor.jsx** - Questions avec réponse attendue
-- **MCQEditor.jsx** - Questions à choix multiples
-
-### Graphiques et visualisations
-
-- **GraphEditor.jsx** - Graphiques de fonctions
-- **VectorEditor.jsx** - Vecteurs 2D et 3D
-- **ComplexPlaneEditor.jsx** - Plan complexe
-- **DiscreteGraphEditor.jsx** - Graphes discrets
-
-### Tableaux
-
-- **SignTableEditor.jsx** - Tableaux de signes
-- **VariationTableEditor.jsx** - Tableaux de variations
-- **StatsTableEditor.jsx** - Tableaux statistiques
-
-### Suites et probabilités
-
-- **SequenceEditor.jsx** - Suites numériques (explicites, récurrentes, arithmétiques, géométriques)
-- **ProbaTreeEditor.jsx** - Arbres de probabilités
-
-## 💡 Notes importantes
-
-- Les placeholders montrent des exemples de syntaxe LaTeX
-- Les variables entre `{}` sont automatiquement remplacées par leurs valeurs
-- Les formules LaTeX sont rendues via KaTeX dans les renderers correspondants
+Dispatch dans `ElementEditor.jsx`.

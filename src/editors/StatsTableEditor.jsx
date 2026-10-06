@@ -1,97 +1,107 @@
-import React from 'react';
-
 const StatsTableEditor = ({ content, onUpdate }) => {
-  const updateHeader = (index, value) => {
-    const newHeaders = [...content.headers];
-    newHeaders[index] = value;
-    onUpdate({ ...content, headers: newHeaders });
-  };
+  const headers = Array.isArray(content?.headers) && content.headers.length > 0
+    ? content.headers
+    : ["Valeur", "Effectif"];
+  const rows = Array.isArray(content?.rows) ? content.rows : [];
+  const safeContent = { ...content, headers, rows };
 
-  const updateCell = (rowIndex, colIndex, value) => {
-    const newRows = [...content.rows];
-    newRows[rowIndex][colIndex] = value;
-    onUpdate({ ...content, rows: newRows });
-  };
+  const update = (patch) => onUpdate({ ...safeContent, ...patch });
 
-  const addRow = () => {
-    const newRows = [...content.rows, new Array(content.headers.length).fill('')];
-    onUpdate({ ...content, rows: newRows });
-  };
+  const updateHeader = (index, value) =>
+    update({ headers: headers.map((h, i) => (i === index ? value : h)) });
 
-  const addColumn = () => {
-    const newHeaders = [...content.headers, `Col ${content.headers.length + 1}`];
-    const newRows = content.rows.map(row => [...row, '']);
-    onUpdate({ ...content, headers: newHeaders, rows: newRows });
-  };
+  const updateCell = (rowIndex, colIndex, value) =>
+    update({
+      rows: rows.map((row, r) =>
+        r === rowIndex ? row.map((cell, c) => (c === colIndex ? value : cell)) : row,
+      ),
+    });
 
-  const removeRow = (index) => {
-    const newRows = content.rows.filter((_, i) => i !== index);
-    onUpdate({ ...content, rows: newRows });
-  };
+  const addRow = () => update({ rows: [...rows, new Array(headers.length).fill("")] });
 
-  const removeColumn = (index) => {
-    const newHeaders = content.headers.filter((_, i) => i !== index);
-    const newRows = content.rows.map(row => row.filter((_, i) => i !== index));
-    onUpdate({ ...content, headers: newHeaders, rows: newRows });
-  };
+  const addColumn = () =>
+    update({
+      headers: [...headers, `Col ${headers.length + 1}`],
+      rows: rows.map((row) => [...row, ""]),
+    });
+
+  const removeRow = (index) => update({ rows: rows.filter((_, i) => i !== index) });
+
+  const removeColumn = (index) =>
+    update({
+      headers: headers.filter((_, i) => i !== index),
+      rows: rows.map((row) => row.filter((_, i) => i !== index)),
+    });
 
   return (
     <div className="space-y-2">
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <button
+          type="button"
           onClick={addRow}
           className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
         >
           + Ligne
         </button>
         <button
+          type="button"
           onClick={addColumn}
           className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600"
         >
           + Colonne
         </button>
+        <span className="text-xs text-gray-500">
+          Les cellules acceptent <code>@a</code> et le LaTeX (<code>$...$</code>).
+        </span>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr>
-              {content.headers.map((header, i) => (
+              {headers.map((header, i) => (
                 <th key={i} className="p-1">
-                  <input
-                    className="w-full p-1 border rounded text-center font-bold"
-                    value={header}
-                    onChange={(e) => updateHeader(i, e.target.value)}
-                  />
-                  {content.headers.length > 1 && (
-                    <button
-                      onClick={() => removeColumn(i)}
-                      className="ml-1 px-1 text-red-500 hover:text-red-700"
-                    >
-                      ×
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <input
+                      className="w-full p-1 border rounded text-center font-bold"
+                      value={header}
+                      onChange={(e) => updateHeader(i, e.target.value)}
+                    />
+                    {headers.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeColumn(i)}
+                        className="px-1 text-red-500 hover:text-red-700"
+                        title="Supprimer la colonne"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </th>
               ))}
+              <th />
             </tr>
           </thead>
           <tbody>
-            {content.rows.map((row, i) => (
+            {rows.map((row, i) => (
               <tr key={i}>
-                {row.map((cell, j) => (
+                {headers.map((_, j) => (
                   <td key={j} className="p-1">
                     <input
                       className="w-full p-1 border rounded text-center"
-                      value={cell}
+                      value={row[j] ?? ""}
                       onChange={(e) => updateCell(i, j, e.target.value)}
                     />
                   </td>
                 ))}
-                <td>
-                  {content.rows.length > 1 && (
+                <td className="p-1">
+                  {rows.length > 1 && (
                     <button
+                      type="button"
                       onClick={() => removeRow(i)}
                       className="px-1 text-red-500 hover:text-red-700"
+                      title="Supprimer la ligne"
                     >
                       ×
                     </button>

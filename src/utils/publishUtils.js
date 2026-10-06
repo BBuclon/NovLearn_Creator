@@ -1,129 +1,123 @@
 // src/utils/publishUtils.js
+// Accès aux exercices via l'API Novlearn (lecture publique, écriture avec secret).
 
 const API_URL = import.meta.env.VITE_NOVLEARN_API_URL;
 const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET;
 
-// Petit helper pour gérer les erreurs API proprement
+// Colonnes de la table `exercises` : tout le reste part dans `content` (JSON).
+const META_KEYS = new Set([
+  "id",
+  "title",
+  "appTitle",
+  "apptitle",
+  "app_title",
+  "chapter",
+  "difficulty",
+  "competences",
+  "Is_Flash",
+  "Need_Calculator",
+  "content",
+  "created_at",
+  "updated_at",
+]);
+
 const handleApiResponse = async (response) => {
-  const result = await response.json();
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(`Réponse API invalide (HTTP ${response.status})`);
+  }
   if (!response.ok || !result.success) {
-    throw new Error(result.error || "Erreur API inconnue");
+    throw new Error(result.error || `Erreur API (HTTP ${response.status})`);
   }
   return result;
 };
 
-/**
- * Récupère la liste simplifiée des exercices via l'API Novlearn
- */
+const guardConfig = () => {
+  if (!API_URL) {
+    throw new Error("VITE_NOVLEARN_API_URL n'est pas défini dans le fichier .env");
+  }
+};
+
+/** Liste simplifiée des exercices */
 export const fetchExercisesList = async () => {
   try {
-    const response = await fetch(API_URL, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    // L'API renvoie { success: true, exercises: [...] }
+    guardConfig();
+    const response = await fetch(API_URL, { headers: { "Content-Type": "application/json" } });
     const result = await handleApiResponse(response);
     return { success: true, data: result.exercises };
-
   } catch (err) {
     console.error("Erreur fetch list:", err);
     return { success: false, error: err.message };
   }
 };
 
-/**
- * Récupère un exercice complet via l'API Novlearn
- */
+/** Exercice complet (l'API renvoie déjà un objet aplati : appTitle, variables, elements...) */
 export const fetchFullExercise = async (id) => {
   try {
-    const response = await fetch(`${API_URL}?id=${id}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
+    guardConfig();
+    const response = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, {
+      headers: { "Content-Type": "application/json" },
     });
-
-    // L'API renvoie { success: true, data: formattedExercise }
-    // Note : L'API fait déjà le formatage (appTitle, spread content...), 
-    // donc on récupère direct l'objet prêt à l'emploi.
     const result = await handleApiResponse(response);
     return { success: true, data: result.data };
-
   } catch (err) {
     console.error("Erreur fetch one:", err);
     return { success: false, error: err.message };
   }
 };
 
-/**
- * Supprime un exercice via l'API (Nécessite le Secret)
- */
+/** Suppression (nécessite le secret) */
 export const deleteExerciseFromDB = async (id) => {
   try {
-    const response = await fetch(`${API_URL}?id=${id}`, {
-      method: 'DELETE',
-      headers: {
-        'x-admin-secret': ADMIN_SECRET // 🔐 Authentification machine
-      }
+    guardConfig();
+    const response = await fetch(`${API_URL}?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "x-admin-secret": ADMIN_SECRET },
     });
-
     await handleApiResponse(response);
     return { success: true };
-
   } catch (err) {
     console.error("Erreur suppression:", err);
     return { success: false, error: err.message };
   }
 };
 
-/**
- * Publie ou Met à jour l'exercice via l'API (Nécessite le Secret)
- */
+/** Publication / mise à jour (POST = upsert côté API, nécessite le secret) */
 export const publishExerciseToDB = async (exercise) => {
   if (!exercise.title || !exercise.chapter) {
     return { success: false, error: "Titre et Chapitre requis." };
   }
+  if (!exercise.elements || exercise.elements.length === 0) {
+    return { success: false, error: "L'exercice doit contenir au moins un élément." };
+  }
 
-  // 1. Préparation des données (Identique à ton ancienne logique)
-  const {
-    id,
-    title,
-    appTitle,
-    chapter,
-    difficulty,
-    competences,
-    Is_Flash,
-    Need_Calculator,
-    ...contentOnly
-  } = exercise;
+  const content = Object.fromEntries(
+    Object.entries(exercise).filter(([key]) => !META_KEYS.has(key)),
+  );
 
-  // On reconstruit l'objet tel qu'attendu par la table Supabase
   const dbRow = {
-    // Si on a un ID, on le met pour que l'API fasse un UPDATE, sinon ce sera un INSERT
-    ...(id && { id }),
-    title,
-    app_title: appTitle || title,
-    chapter,
-    difficulty: difficulty || 'Moyen',
-    competences: competences || [],
-    Is_Flash: Is_Flash ?? false,
-    Need_Calculator: Need_Calculator ?? false,
-    content: contentOnly // Le JSON pur du contenu
+    ...(exercise.id && { id: exercise.id }),
+    title: exercise.title,
+    app_title: exercise.appTitle || exercise.title,
+    chapter: exercise.chapter,
+    difficulty: exercise.difficulty || "Moyen",
+    competences: exercise.competences || [],
+    Is_Flash: exercise.Is_Flash ?? false,
+    Need_Calculator: exercise.Need_Calculator ?? false,
+    content,
   };
 
   try {
-    // 2. Envoi à l'API (POST gère Upsert)
+    guardConfig();
     const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-secret': ADMIN_SECRET // 🔐 Authentification machine
-      },
-      body: JSON.stringify(dbRow)
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-secret": ADMIN_SECRET },
+      body: JSON.stringify(dbRow),
     });
-
     const result = await handleApiResponse(response);
     return { success: true, data: result.data };
-
   } catch (err) {
     console.error("Erreur Publication API:", err);
     return { success: false, error: err.message };

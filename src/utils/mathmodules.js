@@ -40,7 +40,7 @@ export const mathModules = {
         x0 = x1; x1 = x2;
       }
       return x1;
-    } catch (e) { return NaN; }
+    } catch { return NaN; }
   },
 
   derive: (exprStr, a) => {
@@ -49,7 +49,7 @@ export const mathModules = {
       const f = new Function('x', `const sin=Math.sin, cos=Math.cos, tan=Math.tan, sqrt=Math.sqrt, abs=Math.abs, exp=Math.exp, ln=Math.log; return ${safeExpr};`);
       const h = 0.00001;
       return (f(a + h) - f(a - h)) / (2 * h);
-    } catch (e) { return NaN; }
+    } catch { return NaN; }
   },
 
   // --- 3. ARITHMÉTIQUE ---

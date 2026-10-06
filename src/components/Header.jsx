@@ -17,6 +17,7 @@ const Header = ({
   onRegenerate,
   currentExercise,
   onLoadExercise,
+  onPublished,
   onOpenTaxonomy,
 }) => {
   const [isPublishing, setIsPublishing] = useState(false);
@@ -31,19 +32,15 @@ const Header = ({
     setIsPublishing(true);
 
     const result = await publishExerciseToDB(currentExercise);
+    setIsPublishing(false);
 
     if (result.success) {
-      // exportToJSON(currentExercise, true, true); // (Optionnel : téléchargement local)
-
       alert(
-        `✅ Exercice sauvegardé avec succès ! (ID: ${result.data.id})\nLa page va maintenant se recharger pour un nouvel exercice.`,
+        `✅ Exercice sauvegardé avec succès ! (ID: ${result.data?.id ?? currentExercise.id})\nUn nouvel exercice vierge est prêt.`,
       );
-
-      // --- MODIFICATION ICI : On recharge la page ---
-      window.location.reload();
+      onPublished?.();
     } else {
       alert(`❌ Erreur : ${result.error}`);
-      setIsPublishing(false); // On ne désactive le chargement qu'en cas d'erreur
     }
   };
 

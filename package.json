@@ -1,30 +1,32 @@
 {
+  "name": "novlearn-exercice-builder",
+  "version": "1.1.0",
+  "description": "Éditeur d'exercices de mathématiques Novlearn (React + Vite + Supabase)",
+  "private": true,
+  "type": "module",
+  "license": "ISC",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src"
+  },
   "dependencies": {
-    "@hello-pangea/dnd": "^18.0.1",
     "@supabase/supabase-js": "^2.89.0",
-    "file-saver": "^2.0.5",
     "katex": "^0.16.25",
     "lucide-react": "^0.552.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-katex": "^3.1.0"
   },
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "name": "exercice-builder",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "module",
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^5.1.1",
-    "gh-pages": "^6.3.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.12.0",
+    "tailwindcss": "^4.3.3",
     "vite": "^7.2.1"
   }
 }

@@ -1,215 +1,97 @@
-# 📘 Exercise Builder
+# 📘 Novlearn — Exercice Builder
 
-Une application web interactive pour créer et gérer des exercices de mathématiques, développée avec React + Vite.
-Support complet de LaTeX pour des expressions mathématiques professionnelles.
+Outil interne pour créer et publier des exercices de mathématiques sur la plateforme Novlearn.
+React 19 + Vite 7 + Tailwind CSS v4, rendu LaTeX via KaTeX, variables aléatoires `@a`.
 
-## 🚀 Installation et exécution locale
+## 🚀 Installation
 
-1. **Cloner le dépôt**
 ```bash
 git clone https://github.com/Luxods/NovLearn_Exercice-Builder.git
 cd Novlearn_Exercice-Builder
-```
-
-2. **Installer les dépendances**
-```bash
 npm install
+cp .env.example .env   # puis renseigner les clés
+npm run dev            # http://localhost:5173
 ```
 
-3. **Lancer le serveur de développement**
-```bash
-npm run dev
-```
+Autres scripts : `npm run build` (production dans `dist/`), `npm run preview`, `npm run lint`.
 
-Le projet sera accessible à l'adresse :
-👉 **http://localhost:5173**
+## 🔐 Sécurité — à lire avant tout déploiement
 
-## 🔧 Configuration
+Toutes les variables `VITE_*` sont **embarquées dans le bundle JavaScript** livré au navigateur.
+Or le fichier `.env` contient :
 
-👉 Pour modifier les chapitres / compétences : voir `/src/constants/index.js`
+- `VITE_SUPABASE_SERVICE_KEY` : la *service role key* Supabase (bypass complet du RLS, accès total à la base) ;
+- `VITE_ADMIN_SECRET` : le secret qui autorise la publication / suppression d'exercices via l'API Novlearn.
 
-## 📐 Utilisation de LaTeX
+**Conséquence : cette application ne doit pas être déployée sur une URL publique en l'état.**
+Elle se lance en local (ou derrière une authentification réseau) par l'équipe pédagogique uniquement.
 
-**Tous les éditeurs supportent la syntaxe LaTeX !**
+Pour pouvoir la déployer, il faut sortir ces secrets du client :
 
-### Syntaxe de base
-- **Variables dynamiques** : `{a}`, `{b}`, `{c}` → remplacées par des valeurs aléatoires
-- **LaTeX inline** : `$expression$` → formules mathématiques
-- **Combiné** : `$f(x) = {a}x^2 + {b}x + {c}$`
+1. Gérer les chapitres/compétences via l'API Novlearn (ou une Edge Function Supabase) plutôt qu'avec la service key ;
+2. Remplacer `x-admin-secret` par une vraie authentification (Supabase Auth + RLS, ou session Novlearn).
 
-### Guide complet
-📖 **Consultez [GUIDE_LATEX.md](GUIDE_LATEX.md)** pour :
-- Tous les symboles mathématiques
-- Exemples par type d'élément
-- Syntaxe avancée (matrices, systèmes, intégrales...)
-- Pièges courants et solutions
+## ✍️ Syntaxe des contenus
 
-### Exemples rapides
-```latex
-Fractions: \frac{{a}}{{b}}
-Racines: \sqrt{{a}x + {b}}
-Puissances: {a}x^{2} + {b}x + {c}
-Indices: U_n ou U_{n+1}
-Somme: \sum_{i=1}^{{n}}
-Intégrale: \int_{{a}}^{{b}} x^2 dx
-Limites: \lim_{x \to \infty}
-Systèmes: \begin{cases} {a}x + {b}y = {c} \\ {d}x + {e}y = {f} \end{cases}
-Ensembles: \mathbb{R}, \mathbb{N}, \mathbb{Z}
-Symboles grecs: \alpha, \beta, \pi, \Delta
-Opérateurs: \leq, \geq, \neq, \approx, \pm, \infty
-```
+| Élément | Exemple |
+|---------|---------|
+| Variable | `@a`, `@x1` (un `@` littéral s'écrit `@@`) |
+| LaTeX inline | `$f(x) = @a x^2 + @b$` |
+| LaTeX bloc (centré) | `$$\int_0^1 x^2\,dx$$` |
+| Expression de graphe | `@a x^2 + @b`, `\frac{x+1}{x-2}`, `e^x`, `sin(x)`, `\sqrt{x}` |
+| Suite | `n^2/(n+1)` (explicite), `0.5*u_n + 2` (récurrente) |
 
-## 📦 Format des exercices JSON
+Le moteur nettoie automatiquement les expressions dans les segments `$...$` :
+`1x → x`, `0x → supprimé`, `+ -5 → - 5`. La prose n'est pas modifiée.
+
+Voir [GUIDE_LATEX.md](GUIDE_LATEX.md) pour le détail des symboles.
+
+## 🎲 Variables
+
+- **Entier / Décimal** : bornes min/max, valeurs interdites (`0; -1`), nombre de décimales.
+- **Choix** : liste `sin,cos,tan`.
+- **Calculé** : expression JavaScript avec les fonctions de `src/utils/mathmodules.js`
+  (`root1(@a,@b,@c)`, `pgcd(@a,@b)`, `solve('x^2-@a', 0)`...).
+- **Doublet / Triplet** : couples ou triplets tirés dans une liste `(1,2); (-1,3)`, ou triplet
+  « carré parfait » `(p², 2pq, q²)`.
+
+## 🧩 Types d'éléments
+
+`text`, `equation`, `graph`, `question`, `mcq`, `signTable`, `variationTable`, `statsTable`,
+`probaTree`, `vector`, `complexPlane`, `discreteGraph`.
+Chaque type = un éditeur (`src/editors/`), un renderer (`src/renderers/`) et un contenu par défaut
+(`src/utils/defaultContent.js`). Voir [CLAUDE.md](CLAUDE.md) pour l'architecture détaillée.
+
+## 📦 Format d'un exercice
 
 ```json
 {
-  "id": 1,
-  "title": "Équation du second degré",
-  "chapter": "Algèbre",
-  "difficulty": "moyen",
+  "id": 42,
+  "title": "Second_degre_1",
+  "appTitle": "Équation du second degré",
+  "chapter": "Second degré",
+  "difficulty": "Moyen",
+  "competences": ["Résoudre une équation du second degré"],
+  "Is_Flash": false,
+  "Need_Calculator": false,
   "variables": [
-    {
-      "id": 1,
-      "name": "a",
-      "type": "integer",
-      "min": 1,
-      "max": 5
-    }
+    { "id": 1, "name": "a", "type": "integer", "min": 1, "max": 5, "exclusions": "0" }
   ],
   "elements": [
-    {
-      "id": 1,
-      "type": "text",
-      "content": {
-        "text": "Résoudre l'équation ${a}x^2 + {b}x + {c} = 0$"
-      }
-    },
-    {
-      "id": 2,
-      "type": "equation",
-      "content": {
-        "latex": "{a}x^2 + {b}x + {c} = 0"
-      }
-    }
+    { "id": 1, "type": "text", "content": { "text": "Résoudre $@a x^2 - 4 = 0$" } },
+    { "id": 2, "type": "question", "content": { "question": "Solutions ?", "answerFormat": "set", "correctAnswer": "@x1; @x2", "points": 1 } }
   ]
 }
 ```
 
-## 🎯 Types d'éléments disponibles
+En base, `title`, `app_title`, `chapter`, `difficulty`, `competences`, `Is_Flash`,
+`Need_Calculator` sont des colonnes ; `variables` et `elements` sont stockés dans la colonne JSON
+`content`.
 
-- **text** - Texte avec support LaTeX
-- **function** - Fonctions mathématiques
-- **equation** - Équations et systèmes
-- **graph** - Graphiques de fonctions
-- **sequence** - Suites numériques
-- **question** - Questions avec réponse
-- **mcq** - Questions à choix multiples
-- **vector** - Vecteurs 2D/3D
-- **stats-table** - Tableaux statistiques
-- **sign-table** - Tableaux de signes
-- **variation-table** - Tableaux de variations
-- **proba-tree** - Arbres de probabilités
-- **complex-plane** - Plan complexe
-- **discrete-graph** - Graphes discrets
+## 🛠️ Stack
 
-## 🚀 Déploiement
+React 19 · Vite 7 · Tailwind CSS 4 · KaTeX / react-katex · lucide-react · @supabase/supabase-js · ESLint 9
 
-### Sur Vercel
-1. Connectez votre repo GitHub à Vercel
-2. Vercel détecte automatiquement Vite
-3. Déployez !
-
-Le projet est configuré pour Vercel avec :
-- Framework : Vite (détection automatique)
-- Build Command : `npm run build`
-- Output Directory : `dist`
-
-
-## 🛠️ Technologies
-
-- **React 19** - Framework UI
-- **Vite 7** - Build tool
-- **KaTeX** - Rendu LaTeX
-- **Lucide React** - Icônes
-- **FileSaver** - Export de fichiers
-
-## 📝 License
+## 📝 Licence
 
 ISC
-
-```
-Novlearn_Exercice-Builder
-├─ GUIDE_LATEX.md
-├─ index.html
-├─ package-lock.json
-├─ package.json
-├─ public
-│  └─ logo.jpg
-├─ README
-├─ README.md
-├─ src
-│  ├─ App.jsx
-│  ├─ components
-│  │  ├─ ElementList.jsx
-│  │  ├─ ExerciseInfo.jsx
-│  │  ├─ ExercisePreview.jsx
-│  │  ├─ ExportModal.jsx
-│  │  ├─ Header.jsx
-│  │  ├─ Sidebar.jsx
-│  │  └─ VariableManager.jsx
-│  ├─ constants
-│  │  └─ index.js
-│  ├─ editors
-│  │  ├─ ComplexPlaneEditor.jsx
-│  │  ├─ DiscreteGraphEditor.jsx
-│  │  ├─ ElementEditor.jsx
-│  │  ├─ EquationEditor.jsx
-│  │  ├─ FunctionEditor.jsx
-│  │  ├─ GraphEditor.jsx
-│  │  ├─ MCQEditor.jsx
-│  │  ├─ ProbaTreeEditor.jsx
-│  │  ├─ QuestionEditor.jsx
-│  │  ├─ README
-│  │  ├─ SequenceEditor.jsx
-│  │  ├─ SignTableEditor.jsx
-│  │  ├─ StatsTableEditor.jsx
-│  │  ├─ TextEditor.jsx
-│  │  ├─ VariationTableEditor.jsx
-│  │  └─ VectorEditor.jsx
-│  ├─ hooks
-│  │  ├─ useCorrection.js
-│  │  ├─ useExercises.js
-│  │  └─ useVariables.js
-│  ├─ main.jsx
-│  ├─ renderers
-│  │  ├─ ComplexPlaneRenderer.jsx
-│  │  ├─ DiscreteGraphRenderer.jsx
-│  │  ├─ ElementRenderer.jsx
-│  │  ├─ EquationRenderer.jsx
-│  │  ├─ FunctionRenderer.jsx
-│  │  ├─ GraphRenderer.jsx
-│  │  ├─ MCQRenderer.jsx
-│  │  ├─ ProbaTreeRenderer.jsx
-│  │  ├─ QuestionRenderer.jsx
-│  │  ├─ README
-│  │  ├─ SequenceRenderer.jsx
-│  │  ├─ SignTableRenderer.jsx
-│  │  ├─ StatsTableRenderer.jsx
-│  │  ├─ TextRenderer.jsx
-│  │  ├─ VariationTableRenderer.jsx
-│  │  └─ VectorRenderer.jsx
-│  ├─ styles
-│  │  ├─ base.css
-│  │  ├─ components.css
-│  │  ├─ index.css
-│  │  └─ utilities.css
-│  └─ utils
-│     ├─ defaultContent.js
-│     ├─ evaluateExpression.js
-│     ├─ exportUtils.js
-│     ├─ generateRandomValues.js
-│     ├─ mathRenderer.jsx
-│     └─ README.md
-└─ vite.config.js
-
-```

@@ -1,72 +1,36 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { evaluateExpression } from '../utils/evaluateExpression';
+import { useEffect, useMemo, useRef } from "react";
+import { evaluateExpression } from "../utils/evaluateExpression";
+import { compileExpression, evalMath } from "../utils/mathExpr";
+import MathText from "../utils/mathRenderer";
 
 const WIDTH = 400;
 const HEIGHT = 300;
 
 const AUTO_X_DEFAULT = [-10, 10];
-const AUTO_X_SPAN = 20;       // si une seule borne x est auto, on étend de 20
-const Y_MARGIN = 0.15;        // marge 15% en haut/bas pour l'auto-fit y
-const Y_SAMPLES = 200;        // échantillonnage pour l'auto-fit y
+const AUTO_X_SPAN = 20; // si une seule borne x est auto, on étend de 20
+const Y_MARGIN = 0.15; // marge 15% en haut/bas pour l'auto-fit y
+const Y_SAMPLES = 200; // échantillonnage pour l'auto-fit y
 
-// Convertit une expression LaTeX/math vers du JS évaluable.
-// Les @variables doivent déjà avoir été substituées en amont.
-const toJsExpression = (expr) => {
-  return String(expr)
-    .replace(/\\ln/g, 'Math.log')
-    .replace(/\\log/g, 'Math.log10')
-    .replace(/\\sqrt/g, 'Math.sqrt')
-    .replace(/\\sin/g, 'Math.sin')
-    .replace(/\\cos/g, 'Math.cos')
-    .replace(/\\tan/g, 'Math.tan')
-    .replace(/\\exp/g, 'Math.exp')
-    .replace(/\\pi/g, '(Math.PI)')
-    .replace(/\\e(?![a-zA-Z])/g, '(Math.E)')
-    .replace(/\^/g, '**')
-    .replace(/(\d)\s*x/g, '$1*x'); // 2x -> 2*x
-};
-
-// Compile une expression f(x) en fonction JS (x) => number
+// Compile une expression f(x) (syntaxe calculatrice ou LaTeX) en (x) => number
 const compileFunction = (expression, variables) => {
-  try {
-    const substituted = evaluateExpression(expression, variables);
-    const jsExpr = toJsExpression(substituted);
-    // eslint-disable-next-line no-new-func
-    const fn = new Function('x', `with (Math) { try { return (${jsExpr}); } catch (e) { return NaN; } }`);
-    return (x) => {
-      const v = fn(x);
-      return typeof v === 'number' && Number.isFinite(v) ? v : NaN;
-    };
-  } catch {
-    return () => NaN;
-  }
-};
-
-// Résout une borne fixe (number ou expression). Retourne null si "auto" / invalide.
-const resolveFixedBound = (bound, variables) => {
-  if (bound === null || bound === undefined || bound === 'auto') return null;
-  if (typeof bound === 'number') return Number.isFinite(bound) ? bound : null;
-  if (typeof bound === 'string') {
-    const trimmed = bound.trim();
-    if (trimmed === '' || trimmed.toLowerCase() === 'auto') return null;
-    try {
-      const substituted = evaluateExpression(trimmed, variables);
-      const jsExpr = toJsExpression(substituted);
-      // eslint-disable-next-line no-new-func
-      const val = new Function(`with (Math) { return (${jsExpr}); }`)();
-      return Number.isFinite(val) ? val : null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
+  const fn = compileExpression(evaluateExpression(expression, variables));
+  return fn ? (x) => fn({ x }) : () => NaN;
 };
 
 const isAutoBound = (bound) =>
-  bound === 'auto' || bound === null || bound === undefined ||
-  (typeof bound === 'string' && bound.trim().toLowerCase() === 'auto');
+  bound === null ||
+  bound === undefined ||
+  (typeof bound === "string" && (bound.trim() === "" || bound.trim().toLowerCase() === "auto"));
 
-// Auto-fit X : [-10,10] par défaut ; si une seule borne fixe, étend de ±20
+// Résout une borne fixe (number ou expression avec @variables). null si auto / invalide.
+const resolveFixedBound = (bound, variables) => {
+  if (isAutoBound(bound)) return null;
+  if (typeof bound === "number") return Number.isFinite(bound) ? bound : null;
+  const val = evalMath(bound, variables);
+  return Number.isFinite(val) ? val : null;
+};
+
+// Auto-fit X : [-10,10] par défaut ; si une seule borne fixe, étend de 20
 const computeXRange = (content, variables) => {
   const xMinAuto = isAutoBound(content.xMin);
   const xMaxAuto = isAutoBound(content.xMax);
@@ -82,15 +46,13 @@ const computeXRange = (content, variables) => {
 
   if (xMinAuto) {
     const max = resolveFixedBound(content.xMax, variables);
-    if (max === null) return AUTO_X_DEFAULT;
-    return [max - AUTO_X_SPAN, max];
+    return max === null ? AUTO_X_DEFAULT : [max - AUTO_X_SPAN, max];
   }
   const min = resolveFixedBound(content.xMin, variables);
-  if (min === null) return AUTO_X_DEFAULT;
-  return [min, min + AUTO_X_SPAN];
+  return min === null ? AUTO_X_DEFAULT : [min, min + AUTO_X_SPAN];
 };
 
-// Auto-fit Y : échantillonne les fonctions, prend percentiles 1% / 99%, ajoute 15% de marge
+// Auto-fit Y : échantillonne les fonctions, percentiles 1% / 99%, marge 15%
 const computeYRangeAuto = (xRange, compiledFns) => {
   const [xMin, xMax] = xRange;
   const samples = [];
@@ -137,30 +99,30 @@ const niceStep = (range) => {
   return nice * pow;
 };
 
-const GraphRenderer = ({ content, variables }) => {
+const NO_VARIABLES = {};
+
+const GraphRenderer = ({ content, variables = NO_VARIABLES }) => {
   const canvasRef = useRef(null);
+  const vars = variables;
 
-  // Compilation des fonctions (une fois par changement de content/variables)
-  const compiledFns = useMemo(() => {
-    return (content.functions || [])
-      .filter(fn => fn && fn.expression)
-      .map(fn => ({ ...fn, _eval: compileFunction(fn.expression, variables || {}) }));
-  }, [content.functions, variables]);
-
-  // Calcul des bornes effectives
-  const [xMin, xMax] = useMemo(
-    () => computeXRange(content, variables || {}),
-    [content, variables]
+  const compiledFns = useMemo(
+    () =>
+      (content.functions || [])
+        .filter((fn) => fn && fn.expression)
+        .map((fn) => ({ ...fn, _eval: compileFunction(fn.expression, vars) })),
+    [content.functions, vars],
   );
+
+  const [xMin, xMax] = useMemo(() => computeXRange(content, vars), [content, vars]);
   const [yMin, yMax] = useMemo(
-    () => computeYRange(content, variables || {}, [xMin, xMax], compiledFns.map(f => f._eval)),
-    [content, variables, xMin, xMax, compiledFns]
+    () => computeYRange(content, vars, [xMin, xMax], compiledFns.map((f) => f._eval)),
+    [content, vars, xMin, xMax, compiledFns],
   );
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
     const xScale = WIDTH / (xMax - xMin);
@@ -170,35 +132,43 @@ const GraphRenderer = ({ content, variables }) => {
 
     // 1. Grille
     if (content.showGrid !== false) {
-      ctx.strokeStyle = '#e5e7eb';
+      ctx.strokeStyle = "#e5e7eb";
       ctx.lineWidth = 1;
       ctx.beginPath();
       const stepX = niceStep(xMax - xMin);
       const stepY = niceStep(yMax - yMin);
       for (let x = Math.ceil(xMin / stepX) * stepX; x <= xMax; x += stepX) {
-        const sx = toScreenX(x); ctx.moveTo(sx, 0); ctx.lineTo(sx, HEIGHT);
+        const sx = toScreenX(x);
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, HEIGHT);
       }
       for (let y = Math.ceil(yMin / stepY) * stepY; y <= yMax; y += stepY) {
-        const sy = toScreenY(y); ctx.moveTo(0, sy); ctx.lineTo(WIDTH, sy);
+        const sy = toScreenY(y);
+        ctx.moveTo(0, sy);
+        ctx.lineTo(WIDTH, sy);
       }
       ctx.stroke();
     }
 
     // 2. Axes
-    ctx.strokeStyle = '#374151';
+    ctx.strokeStyle = "#374151";
     ctx.lineWidth = 2;
     ctx.beginPath();
     if (xMin <= 0 && xMax >= 0) {
-      const sx = toScreenX(0); ctx.moveTo(sx, 0); ctx.lineTo(sx, HEIGHT);
+      const sx = toScreenX(0);
+      ctx.moveTo(sx, 0);
+      ctx.lineTo(sx, HEIGHT);
     }
     if (yMin <= 0 && yMax >= 0) {
-      const sy = toScreenY(0); ctx.moveTo(0, sy); ctx.lineTo(WIDTH, sy);
+      const sy = toScreenY(0);
+      ctx.moveTo(0, sy);
+      ctx.lineTo(WIDTH, sy);
     }
     ctx.stroke();
 
     // 3. Courbes
-    compiledFns.forEach(fn => {
-      ctx.strokeStyle = fn.color || '#2563eb';
+    compiledFns.forEach((fn) => {
+      ctx.strokeStyle = fn.color || "#2563eb";
       ctx.lineWidth = 2;
       ctx.beginPath();
 
@@ -209,28 +179,33 @@ const GraphRenderer = ({ content, variables }) => {
       for (let i = 0; i <= WIDTH; i++) {
         const x = xMin + i * step;
         const y = fn._eval(x);
-        if (!Number.isFinite(y)) { first = true; prevY = null; continue; }
-
-        // Détection d'asymptote : saut vertical brutal -> on coupe le trait
-        if (prevY !== null && Math.abs(y - prevY) > (yMax - yMin) * 2) {
+        if (!Number.isFinite(y)) {
           first = true;
+          prevY = null;
+          continue;
         }
+        // Asymptote : saut vertical brutal -> on coupe le trait
+        if (prevY !== null && Math.abs(y - prevY) > (yMax - yMin) * 2) first = true;
         prevY = y;
 
         const sx = toScreenX(x);
         const sy = toScreenY(y);
-
-        // Clip vertical large
-        if (sy < -HEIGHT || sy > HEIGHT * 2) { first = true; continue; }
-
-        if (first) { ctx.moveTo(sx, sy); first = false; }
-        else { ctx.lineTo(sx, sy); }
+        if (sy < -HEIGHT || sy > HEIGHT * 2) {
+          first = true;
+          continue;
+        }
+        if (first) {
+          ctx.moveTo(sx, sy);
+          first = false;
+        } else {
+          ctx.lineTo(sx, sy);
+        }
       }
       ctx.stroke();
     });
   }, [compiledFns, xMin, xMax, yMin, yMax, content.showGrid]);
 
-  const visibleLabels = compiledFns.filter(fn => fn.showExpression !== false);
+  const visibleLabels = compiledFns.filter((fn) => fn.showExpression !== false);
 
   return (
     <div className="flex flex-col items-center p-4 bg-white rounded-lg border border-gray-100 shadow-sm gap-2">
@@ -238,13 +213,13 @@ const GraphRenderer = ({ content, variables }) => {
         ref={canvasRef}
         width={WIDTH}
         height={HEIGHT}
-        className="border border-gray-200 rounded bg-white"
+        className="border border-gray-200 rounded bg-white max-w-full"
       />
       {visibleLabels.length > 0 && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-mono">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
           {visibleLabels.map((fn, idx) => (
-            <span key={idx} style={{ color: fn.color || '#2563eb' }}>
-              f(x) = {fn.expression}
+            <span key={idx} style={{ color: fn.color || "#2563eb" }}>
+              <MathText content={`$f(x) = ${fn.expression}$`} variables={vars} />
             </span>
           ))}
         </div>

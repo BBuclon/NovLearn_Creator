@@ -1,327 +1,57 @@
-# 🛠️ Utilitaires - Documentation
+# 🛠️ Utilitaires
 
-## Vue d'ensemble
-
-Le dossier `/src/utils/` contient les fonctions utilitaires essentielles pour le fonctionnement de l'application.
-
-## 📁 Fichiers
-
-### 1. **mathRenderer.jsx** ⭐ CORE
-
-Le moteur de rendu mathématique de l'application.
-
-#### Fonctions principales
-
-##### `MathText` (Composant React)
-
-Composant principal pour afficher du texte avec LaTeX et variables.
+## `mathRenderer.jsx` ⭐ cœur du rendu
 
 ```jsx
-import { MathText } from "../utils/mathRenderer";
+import MathText, { replaceVariables } from "../utils/mathRenderer";
 
-<MathText
-  content="Calculer $f({a}) = {a}x^2 + {b}x + {c}$"
-  variables={{ a: 2, b: -3, c: 1 }}
-  className="text-gray-800"
-  requireBraces={true}
-/>;
+<MathText content="Calculer $f(@a) = @a x^2 + @b$" variables={{ a: 2, b: -3 }} />
 ```
 
-**Props:**
+- `MathText` découpe le texte en segments prose / `$...$` / `$$...$$`, substitue les `@variables`
+  puis rend le LaTeX avec KaTeX. La simplification (`1x → x`, `0x → ∅`, `+ -3 → - 3`) ne
+  s'applique qu'aux segments mathématiques ; la prose garde ses `1`, `0` et parenthèses.
+- `replaceVariables(text, variables, { math })` : substitution seule (utilisée par `MathText`).
+  `@@` produit un `@` littéral.
 
-- `content` (string) - Texte avec LaTeX (`$...$`) et variables (`{a}`)
-- `variables` (object) - Valeurs des variables `{ a: 2, b: 3 }`
-- `className` (string) - Classes CSS
-- `requireBraces` (boolean) - `true` = nécessite `{a}`, `false` = remplace aussi `a`
+## `mathExpr.js` — évaluateur d'expressions
 
-##### `replaceVariablesWithBraces(text, variables)`
+```js
+import { compileExpression, evalMath } from "../utils/mathExpr";
 
-Remplace les variables **avec accolades** `{a}` par leurs valeurs.
-
-```javascript
-replaceVariablesWithBraces("{a}x^2 + {b}x + {c}", { a: 2, b: -3, c: 1 });
-// → "2x^2 - 3x + 1"
+const f = compileExpression("@a x^2 + 1".replace("@a", "-2")); // ou via evaluateExpression
+f({ x: 3 }); // -17
+evalMath("\\frac{@a}{2} + sqrt(9)", { a: 4 }); // 5
 ```
 
-##### `replaceVariablesWithoutBraces(text, variables)`
+Sans `eval` : tokenizer + parser descendant. Supporte `^`, la multiplication implicite (`2x`,
+`(x+1)(x-1)`), `\frac{}{}`, `\sqrt{}`, `\pi`, `e`, `sin cos tan ln log exp abs ...`, `u_n`, `n`.
+Retourne `NaN` (ou `null` à la compilation) si l'expression est invalide.
 
-Remplace les variables **sans accolades** `a` par leurs valeurs.
+## `evaluateExpression.js`
 
-```javascript
-replaceVariablesWithoutBraces("ax^2 + bx + c", { a: 2, b: -3, c: 1 });
-// → "2x^2 - 3x + 1"
-```
+Substitution textuelle des `@variables` (les valeurs négatives sont parenthésées). Préférer
+`evalMath` quand on veut un nombre.
 
-##### `replaceVariables(text, variables, requireBraces)`
+## `generateRandomValues.js`
 
-Version automatique qui choisit selon `requireBraces`.
+Tire les valeurs des variables (`integer`, `decimal`, `choice`, `doublet`, `triplet`) puis évalue
+les variables `computed` (jusqu'à 10 passes pour résoudre les dépendances) avec les fonctions de
+`mathmodules.js`.
 
-##### `formatMathExpression(expression, variables)`
+## `mathmodules.js`
 
-Formate une expression mathématique en remplaçant les variables.
+Bibliothèque exposée aux variables calculées : `delta`, `root1`, `root2`, `vertexX`, `vertexY`,
+`pgcd`, `ppcm`, `isPrime`, `round`, `min`, `max`, `abs`, `solve`, `derive`. `moduleHelpCategories`
+alimente l'aide affichée dans `VariableManager`.
 
-#### Caractéristiques
+## `defaultContent.js`
 
-✅ Gestion intelligente des signes (+/-)  
-✅ Nettoyage automatique des expressions  
-✅ Support LaTeX inline (`$...$`) et bloc (`$$...$$`)  
-✅ Rendu via KaTeX (react-katex)
+Contenu initial de chaque type d'élément. **Obligatoire** pour tout nouveau type : les éditeurs
+supposent la présence des champs.
 
----
+## `publishUtils.js`
 
-### 2. **evaluateExpression.js**
-
-Évalue les expressions en remplaçant les variables.
-
-```javascript
-import { evaluateExpression } from "../utils/evaluateExpression";
-
-evaluateExpression("{a}x + {b}", { a: 2, b: 3 });
-// → "2x + 3"
-```
-
-**Note:** Version simple. Pour expressions mathématiques complexes, préférer `mathRenderer`.
-
----
-
-### 3. **generateRandomValues.js**
-
-Génère des valeurs aléatoires pour les variables d'un exercice.
-
-```javascript
-import { generateRandomValues } from "../utils/generateRandomValues";
-
-const variables = [
-  { name: "a", type: "integer", min: 1, max: 10 },
-  { name: "b", type: "decimal", min: 0, max: 5, decimals: 2 },
-  { name: "c", type: "choice", choices: [2, 4, 6, 8] },
-];
-
-const values = generateRandomValues(variables);
-// → { a: 7, b: 3.14, c: 4 }
-```
-
-**Types supportés:**
-
-- `integer` - Entier entre min et max
-- `decimal` - Décimal avec nombre de décimales
-- `choice` / `math` - Sélection aléatoire dans une liste
-
----
-
-### 4. **defaultContent.js** ✅ UPDATED
-
-Contenu par défaut pour chaque type d'élément (maintenant avec LaTeX).
-
-```javascript
-import { getDefaultContent } from "../utils/defaultContent";
-
-const defaultText = getDefaultContent("text");
-// → { text: "Énoncé de l'exercice. Utilisez {a}, {b}... pour les variables et $...$ pour LaTeX." }
-
-const defaultFunction = getDefaultContent("function");
-// → { expression: "{a}\\sin(x)+{b}", domain: "\\mathbb{R}", ... }
-```
-
-**Types disponibles:**
-
-- `text`, `function`, `graph`, `equation`, `question`, `mcq`
-- `sequence`, `vector`, `complex_plane`, `stats_table`
-- `variation_table`, `sign_table`, `proba_tree`
-
-**Nouveautés:**
-
-- ✅ Variables entre accolades `{a}`, `{b}`
-- ✅ Notation LaTeX moderne (`\sin`, `\mathbb{R}`)
-- ✅ Exemples cohérents avec les éditeurs
-
----
-
-### 5. **exportUtils.js**
-
-Gestion de l'export/import des exercices.
-
-#### Fonctions principales
-
-##### `exportToJSON(exercises, includeAnswers, prettify)`
-
-Exporte les exercices en JSON (un fichier par exercice).
-
-```javascript
-import { exportToJSON } from "../utils/exportUtils";
-
-// Export version élève (sans réponses)
-exportToJSON(exercises, false, true);
-
-// Export version prof (avec réponses)
-exportToJSON(exercises, true, true);
-```
-
-**Paramètres:**
-
-- `exercises` (Array) - Liste des exercices
-- `includeAnswers` (boolean) - `true` = version prof, `false` = version élève
-- `prettify` (boolean) - `true` = JSON indenté
-
-##### `exportAllInOne(exercises, filename, includeAnswers, prettify)`
-
-Exporte tous les exercices dans un seul fichier.
-
-##### `importFromJSON(file)`
-
-Importe des exercices depuis un fichier JSON.
-
-```javascript
-import { importFromJSON } from "../utils/exportUtils";
-
-const file = event.target.files[0];
-const exercises = await importFromJSON(file);
-```
-
-##### `validateExercise(exercise)`
-
-Valide la structure d'un exercice.
-
-```javascript
-import { validateExercise } from "../utils/exportUtils";
-
-const { valid, errors } = validateExercise(exercise);
-if (!valid) {
-  console.error("Erreurs:", errors);
-}
-```
-
-**Validation:**
-
-- ✅ Titre non vide
-- ✅ Chapitre défini
-- ✅ Au moins un élément
-
----
-
-## 🔄 Relations entre utils
-
-```
-┌─────────────────────┐
-│  generateRandomValues│  Génère valeurs aléatoires
-└──────────┬──────────┘
-           │
-           ↓
-┌─────────────────────┐
-│   evaluateExpression │  Remplace variables simples
-└──────────┬──────────┘
-           │
-           ↓
-┌─────────────────────┐
-│    mathRenderer      │  Rendu LaTeX + Variables ⭐
-└──────────┬──────────┘
-           │
-           ↓
-┌─────────────────────┐
-│     Renderers        │  Affichage final
-└─────────────────────┘
-
-┌─────────────────────┐
-│   defaultContent     │  Contenu initial
-└─────────────────────┘
-           │
-           ↓
-┌─────────────────────┐
-│      Editors         │  Création exercices
-└─────────────────────┘
-           │
-           ↓
-┌─────────────────────┐
-│    exportUtils       │  Export/Import JSON
-└─────────────────────┘
-```
-
-## 💡 Bonnes pratiques
-
-### Pour les éditeurs
-
-```jsx
-import { getDefaultContent } from "../utils/defaultContent";
-
-// Utiliser defaultContent pour initialiser
-const [content, setContent] = useState(getDefaultContent("text"));
-```
-
-### Pour les renderers
-
-```jsx
-import { MathText } from "../utils/mathRenderer";
-
-// Toujours utiliser MathText pour afficher du texte avec variables
-<MathText
-  content={content.text}
-  variables={generatedValues}
-  requireBraces={true}
-/>;
-```
-
-### Pour les hooks
-
-```javascript
-import { generateRandomValues } from "../utils/generateRandomValues";
-
-// Générer les valeurs au chargement de l'exercice
-const values = generateRandomValues(exercise.variables);
-```
-
-## 🎯 Checklist d'utilisation
-
-Lors de la création d'un nouvel élément :
-
-- [ ] Ajouter le type dans `defaultContent.js`
-- [ ] Utiliser `MathText` dans le renderer
-- [ ] Supporter les variables `{a}`, `{b}`, etc.
-- [ ] Supporter LaTeX avec `$...$`
-- [ ] Exporter/importer via `exportUtils`
-
-## ⚡ Performance
-
-**mathRenderer.jsx** utilise :
-
-- Regex optimisées pour le remplacement
-- Nettoyage intelligent (évite les doubles calculs)
-- KaTeX en cache (react-katex)
-
-**generateRandomValues.js** :
-
-- Génération O(n) où n = nombre de variables
-- Pas de dépendances lourdes
-
-**exportUtils.js** :
-
-- Utilise Blob API (natif navigateur)
-- Timeout entre exports multiples (évite blocage)
-
-## 🔧 Maintenance
-
-### Tests recommandés
-
-```javascript
-// mathRenderer
-replaceVariablesWithBraces("{a} + {b}", { a: 2, b: -3 });
-// Doit retourner: "2 - 3"
-
-// generateRandomValues
-generateRandomValues([{ name: "a", type: "integer", min: 1, max: 1 }]);
-// Doit retourner: { a: 1 }
-
-// exportUtils
-validateExercise({ title: "", elements: [] });
-// Doit retourner: { valid: false, errors: [...] }
-```
-
-### Évolutions futures
-
-- [ ] Support d'autres moteurs de rendu (MathJax?)
-- [ ] Export vers d'autres formats (PDF, Markdown)
-- [ ] Générateur de valeurs avec contraintes (a ≠ b)
-- [ ] Cache pour les expressions calculées
-
----
-
-✨ **Tous les utils sont maintenant à jour et cohérents avec la syntaxe LaTeX !**
+Client de l'API Novlearn : `fetchExercisesList`, `fetchFullExercise`, `publishExerciseToDB`
+(upsert), `deleteExerciseFromDB`. Les colonnes de la table sont extraites, le reste part dans
+`content`.

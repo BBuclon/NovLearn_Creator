@@ -1,216 +1,90 @@
-# 📐 Guide d'utilisation de LaTeX dans Exercise Builder
+# 📐 Guide LaTeX & variables — Exercice Builder
 
-## 🎯 Vue d'ensemble
+## Syntaxe de base
 
-Tous les éditeurs supportent la syntaxe LaTeX pour créer des expressions mathématiques professionnelles. Ce guide vous montre comment les utiliser efficacement.
+| Besoin | Syntaxe | Exemple |
+|--------|---------|---------|
+| Variable aléatoire | `@nom` | `Soit $a = @a$` |
+| `@` littéral | `@@` | `email@@site.fr` |
+| LaTeX inline | `$...$` | `Calculer $f(x) = x^2 + 3x + 2$` |
+| LaTeX bloc (centré) | `$$...$$` | `$$\int_0^1 x^2\,dx$$` |
+| Combiné | | `Résoudre $@a x^2 + @b x + @c = 0$` |
 
-## 📝 Syntaxe de base
+Les variables sont remplacées **avant** le rendu LaTeX, avec gestion des signes :
+`@a x^2 + @b x + @c` avec `a=1, b=-3, c=0` donne `x^2 - 3x`.
+La simplification (`1x → x`, `0x` supprimé, `+ -3 → - 3`) ne s'applique qu'entre `$...$`.
 
-### 1. LaTeX inline (dans le texte)
-Utilisez `$...$` pour insérer des formules mathématiques dans le texte :
-```
-Calculer $f(x) = x^2 + 3x + 2$
-```
+## Symboles courants
 
-### 2. Variables dynamiques
-Utilisez `{nomVariable}` pour les valeurs qui changeront :
-```
-Résoudre l'équation ${a}x^2 + {b}x + {c} = 0$
-```
+### Opérations
+`x^2` · `x_n` · `x^{n+1}` · `\frac{a}{b}` · `\sqrt{x}` · `\sqrt[n]{x}` · `\times` · `\div` · `\pm`
 
-### 3. Combiner les deux
-```
-Soit la fonction $f(x) = {a}x^2 + {b}x + {c}$. Calculer $f({d})$.
-```
+### Fonctions
+`\sin(x)` · `\cos(x)` · `\tan(x)` · `\ln(x)` · `\log(x)` · `e^x` · `\exp(x)` · `|x|`
 
-## 🔢 Symboles mathématiques courants
+### Comparaisons et ensembles
+`\leq` · `\geq` · `\neq` · `\approx` · `\in` · `\notin` · `\subset` · `\cup` · `\cap` · `\emptyset` · `\infty`
+`\mathbb{N}` · `\mathbb{Z}` · `\mathbb{Q}` · `\mathbb{R}` · `\mathbb{C}`
 
-### Opérations de base
-- Puissance : `x^2` → $x^2$
-- Indice : `x_n` → $x_n$
-- Fraction : `\frac{a}{b}` → $\frac{a}{b}$
-- Racine carrée : `\sqrt{x}` → $\sqrt{x}$
-- Racine n-ième : `\sqrt[n]{x}` → $\sqrt[n]{x}$
+### Grec
+`\alpha` · `\beta` · `\gamma` · `\delta` · `\Delta` · `\theta` · `\lambda` · `\pi` · `\Sigma`
 
-### Fonctions trigonométriques
-- `\sin(x)` → $\sin(x)$
-- `\cos(x)` → $\cos(x)$
-- `\tan(x)` → $\tan(x)$
-- `\arcsin(x)` → $\arcsin(x)$
+### Analyse
+`\lim_{x \to +\infty}` · `\int_{a}^{b} f(x)\,dx` · `\sum_{i=1}^{n}` · `\prod_{i=1}^{n}` · `f'(x)` · `\frac{df}{dx}`
 
-### Fonctions logarithmiques et exponentielles
-- `e^x` → $e^x$
-- `\ln(x)` → $\ln(x)$
-- `\log(x)` → $\log(x)$
+### Géométrie
+`\vec{u}` · `\vec{AB}` · `\lVert \vec{u} \rVert` · `\widehat{ABC}` · `\perp`
 
-### Symboles grecs
-- Alpha : `\alpha` → $\alpha$
-- Beta : `\beta` → $\beta$
-- Delta : `\Delta` → $\Delta$
-- Theta : `\theta` → $\theta$
-- Pi : `\pi` → $\pi$
-- Sigma : `\Sigma` → $\Sigma$
-
-### Opérateurs et symboles
-- Multiplication : `\times` → $\times$
-- Division : `\div` → $\div$
-- Plus ou moins : `\pm` → $\pm$
-- Infini : `\infty` → $\infty$
-- Approximativement : `\approx` → $\approx$
-- Différent de : `\neq` → $\neq$
-- Inférieur ou égal : `\leq` → $\leq$
-- Supérieur ou égal : `\geq` → $\geq$
-
-### Ensembles et logique
-- Appartient à : `\in` → $\in$
-- N'appartient pas à : `\notin` → $\notin$
-- Ensemble vide : `\emptyset` → $\emptyset$
-- Union : `\cup` → $\cup$
-- Intersection : `\cap` → $\cap$
-- Pour tout : `\forall` → $\forall$
-- Il existe : `\exists` → $\exists$
-
-### Nombres spéciaux
-- Entiers naturels : `\mathbb{N}` → $\mathbb{N}$
-- Entiers relatifs : `\mathbb{Z}` → $\mathbb{Z}$
-- Rationnels : `\mathbb{Q}` → $\mathbb{Q}$
-- Réels : `\mathbb{R}` → $\mathbb{R}$
-- Complexes : `\mathbb{C}` → $\mathbb{C}$
-
-## 📚 Exemples par type d'élément
-
-### TextEditor
-```
-Soit $f(x) = {a}x^2 + {b}x + {c}$ une fonction du second degré.
-Calculer $\Delta = b^2 - 4ac$ où $a = {a}$, $b = {b}$ et $c = {c}$.
+### Structures
+```latex
+\begin{cases} @a x + @b y = @c \\ @d x + @e y = @f \end{cases}
+\begin{pmatrix} @a & @b \\ @c & @d \end{pmatrix}
 ```
 
-### FunctionEditor
+## Exemples par type d'élément
+
+**Texte**
 ```
-Expression: {a}\sin(x) + {b}\cos(x)
-Expression: \frac{{a}x + {b}}{{c}x + {d}}
-Expression: {a}e^{{b}x}
+Soit $f(x) = @a x^2 + @b x + @c$. Calculer $\Delta = b^2 - 4ac$ avec $a = @a$, $b = @b$, $c = @c$.
 ```
 
-### EquationEditor
+**Équation** (sans `$`, le rendu est déjà en bloc)
 ```
-Simple: {a}x^2 + {b}x + {c} = 0
-Fraction: \frac{{a}}{{b}}x + \frac{{c}}{{d}} = {e}
-Racine: \sqrt{{a}x + {b}} = {c}
-```
-
-Système:
-```
-\begin{cases}
-{a}x + {b}y = {c} \\
-{d}x + {e}y = {f}
-\end{cases}
+@a x^2 + @b x + @c = 0
+\frac{@a}{@b} x = @c
 ```
 
-### SequenceEditor
+**Graphe** (syntaxe calculatrice ou LaTeX, sans `$`)
 ```
-Explicite: U_n = {a}n^2 + {b}n + {c}
-Récurrence: U_{n+1} = {a}U_n + {b}
-Géométrique: U_n = {u0} \times {q}^n
-```
-
-### QuestionEditor
-```
-Quelle est la limite de $\lim_{x \to \infty} \frac{{a}x + {b}}{{c}x + {d}}$ ?
-Calculer $\int_{{a}}^{{b}} x^2 dx$.
-Résoudre dans $\mathbb{R}$ : $|x - {a}| < {b}$.
+@a x^2 + @b
+\frac{x+1}{x-2}
+e^x
+2\sin(x)
 ```
 
-### MCQEditor
-Options avec LaTeX:
+**Question — solution attendue** (sans `$`)
 ```
-Question: Quelle est la dérivée de $f(x) = {a}x^3$ ?
-Réponses:
-- ${3a}x^2$ (correct)
-- ${a}x^2$
-- $3x^2$
-- ${a}x^3$
+Nombre     : @x1
+Ensemble   : @x1; @x2          (affiché S = { ... })
+Intervalle : ]-\infty; @a]
 ```
 
-## ⚠️ Pièges courants
+**QCM**
+```
+Question : Quelle est la dérivée de $f(x) = @a x^3$ ?
+Options  : $@b x^2$   $@a x^2$   $3x^2$
+```
+(avec une variable calculée `b = 3*@a`)
 
-### 1. Accolades pour variables vs LaTeX
-```
-✅ Correct: {a}x^2 + {b}x + {c}
-❌ Incorrect: ax^2 + bx + c (les variables ne seront pas remplacées)
-```
+## Pièges
 
-### 2. Espaces dans les formules
-```
-✅ Correct: \frac{{a}}{{b}}
-❌ Incorrect: \frac{a}{b} (sans accolades, 'a' et 'b' ne sont pas des variables)
-```
+- `@a` dans un exposant : écrire `x^{@a}` (accolades), sinon seul le premier caractère est en exposant.
+- Une valeur négative dans une fraction : `\frac{@a}{2}` avec `a=-3` donne `\frac{-3}{2}` (correct).
+- Multiplication explicite : `@a * @b` dans les champs numériques (graphe, vecteurs) ; dans le texte
+  LaTeX, utiliser `\times` ou la juxtaposition.
+- Ne pas mettre de `$` dans les champs déjà mathématiques (équation, réponse attendue, expressions de graphe).
 
-### 3. Parenthèses dans les accolades
-```
-✅ Correct: {a}^{n+1}
-❌ Incorrect: {a}^n+1 (seulement n sera en exposant)
-```
+## Ressources
 
-### 4. Systèmes d'équations
-```
-✅ Correct: 
-\begin{cases}
-{a}x + {b}y = {c} \\
-{d}x + {e}y = {f}
-\end{cases}
-
-❌ Incorrect: Oublier \\ entre les lignes
-```
-
-## 🎨 Formatage avancé
-
-### Matrices
-```
-\begin{pmatrix}
-{a} & {b} \\
-{c} & {d}
-\end{pmatrix}
-```
-
-### Vecteurs
-```
-\vec{u} = \begin{pmatrix} {a} \\ {b} \end{pmatrix}
-```
-
-### Dérivées
-```
-f'(x) = {a}x + {b}
-\frac{df}{dx} = {a}x + {b}
-```
-
-### Intégrales
-```
-\int_{a}^{b} f(x)dx
-\int {a}x^2 + {b}x dx = \frac{{a}}{3}x^3 + \frac{{b}}{2}x^2 + C
-```
-
-### Limites
-```
-\lim_{x \to {a}} f(x) = {L}
-\lim_{x \to +\infty} \frac{{a}x}{{b}x + {c}} = \frac{{a}}{{b}}
-```
-
-### Sommes et produits
-```
-\sum_{i=1}^{n} i = \frac{n(n+1)}{2}
-\prod_{i=1}^{n} i = n!
-```
-
-## 💡 Conseils pratiques
-
-1. **Testez vos formules** : Utilisez l'aperçu pour vérifier le rendu
-2. **Variables cohérentes** : Utilisez les mêmes noms de variables partout
-3. **Simplifiez** : Préférez les expressions simples et claires
-4. **Documentation** : Consultez [KaTeX documentation](https://katex.org/docs/supported.html) pour plus de symboles
-
-## 🔗 Ressources
-
-- Documentation KaTeX : https://katex.org/docs/supported.html
-- Éditeur LaTeX en ligne : https://www.codecogs.com/latex/eqneditor.php
-- Symboles mathématiques : https://www.overleaf.com/learn/latex/List_of_Greek_letters_and_math_symbols
+- KaTeX : https://katex.org/docs/supported.html
+- Éditeur en ligne : https://www.codecogs.com/latex/eqneditor.php

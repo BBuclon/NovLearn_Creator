@@ -1,6 +1,12 @@
-import { mathModules } from './mathmodules'; // IMPORT DU MODULE
+import { mathModules } from './mathmodules';
 
-export const generateRandomValues = (variables) => {
+// Les bornes peuvent être des chaînes en cours de saisie ("", "-") : on sécurise.
+const toNum = (v, fallback) => {
+  const n = typeof v === 'number' ? v : parseFloat(v);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+export const generateRandomValues = (variables = []) => {
   const scope = {};
 
   // Helper : parse les exclusions (ex: "0; -1")
@@ -49,21 +55,24 @@ export const generateRandomValues = (variables) => {
     while (!isValid && attempts < MAX_ATTEMPTS) {
       attempts++;
       switch (v.type) {
-        case 'integer':
-          const minI = v.min ?? 1;
-          const maxI = v.max ?? 10;
+        case 'integer': {
+          const minI = Math.min(toNum(v.min, 1), toNum(v.max, 10));
+          const maxI = Math.max(toNum(v.min, 1), toNum(v.max, 10));
           val = Math.floor(Math.random() * (maxI - minI + 1)) + minI;
           break;
-        case 'decimal':
-          const minD = v.min ?? 0;
-          const maxD = v.max ?? 10;
+        }
+        case 'decimal': {
+          const minD = Math.min(toNum(v.min, 0), toNum(v.max, 10));
+          const maxD = Math.max(toNum(v.min, 0), toNum(v.max, 10));
           const raw = Math.random() * (maxD - minD) + minD;
-          val = parseFloat(raw.toFixed(v.decimals ?? 2));
+          val = parseFloat(raw.toFixed(toNum(v.decimals, 2)));
           break;
-        case 'choice':
-          const choices = v.choices || [];
+        }
+        case 'choice': {
+          const choices = (v.choices || []).filter((c) => c !== '');
           val = choices.length ? choices[Math.floor(Math.random() * choices.length)] : '';
           break;
+        }
         default:
           val = '';
       }
@@ -75,7 +84,7 @@ export const generateRandomValues = (variables) => {
         isValid = true;
       }
     }
-    scope[v.name] = isValid ? val : (v.min ?? 0);
+    scope[String(v.name).trim()] = isValid ? val : toNum(v.min, 0);
   });
 
   // 1b. Doublets et Triplets
@@ -94,8 +103,8 @@ export const generateRandomValues = (variables) => {
 
     if (v.mode === 'perfect_square') {
       const excluded = parseExclusions(v.exclusions);
-      const min = v.min ?? -4;
-      const max = v.max ?? 4;
+      const min = toNum(v.min, -4);
+      const max = toNum(v.max, 4);
       const p = randomInt(min, max, excluded);
       const q = randomInt(min, max, excluded);
       const [nA, nB, nC] = v.names;
@@ -146,7 +155,7 @@ export const generateRandomValues = (variables) => {
         } else {
           remaining.push(v);
         }
-      } catch (e) {
+      } catch {
         remaining.push(v);
       }
     });

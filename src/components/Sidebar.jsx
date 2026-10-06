@@ -2,8 +2,8 @@ import { Code, Info } from "lucide-react";
 
 const Sidebar = () => {
   return (
-    <aside className="w-80 bg-white border-r h-full flex flex-col shadow-lg z-20">
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-white custom-scrollbar">
+    <aside className="w-full bg-white rounded-xl shadow-lg overflow-hidden self-start">
+      <div className="p-4 space-y-6">
         {/* --- GUIDE MOTEUR --- */}
         <section className="bg-blue-50 rounded-lg border border-blue-100 p-3">
           <h3 className="font-bold text-blue-900 text-sm mb-3 flex items-center gap-2 border-b border-blue-200 pb-2">
@@ -156,7 +156,8 @@ const LatexCategory = ({ title, children }) => (
 const LatexItem = ({ code, label }) => (
   <div
     className="flex items-center justify-between bg-white px-2 py-1.5 rounded border border-gray-100 text-xs hover:border-blue-300 group cursor-pointer"
-    title="Cliquez pour copier (à implémenter)"
+    title="Cliquer pour copier"
+    onClick={() => navigator.clipboard?.writeText(code).catch(() => {})}
   >
     <span className="text-gray-500">{label}</span>
     <code className="font-mono text-purple-700 bg-purple-50 px-1 rounded text-[10px] group-hover:bg-purple-100 select-all">

@@ -2,36 +2,27 @@ import { BookOpen, Lightbulb } from "lucide-react";
 
 const QuestionEditor = ({ content, onUpdate }) => {
   const safeContent = {
-    question: "Question...",
+    question: "",
     answerFormat: "number",
     correctAnswer: "",
-    explanation: "", // Nouveau champ
-    hint: "", // Nouveau champ
+    explanation: "",
+    hint: "",
     points: 1,
     ...content,
   };
 
-  const update = (field, value) => {
-    onUpdate({ ...safeContent, [field]: value });
-  };
-
-  const insertSymbol = (symbol) => {
-    const current = safeContent.correctAnswer || "";
-    update("correctAnswer", current + symbol);
-  };
+  const update = (field, value) => onUpdate({ ...safeContent, [field]: value });
 
   return (
     <div className="space-y-4">
       {/* 1. ÉNONCÉ */}
       <div>
-        <label className="block text-sm font-bold text-gray-700 mb-1">
-          Énoncé de la question
-        </label>
+        <label className="block text-sm font-bold text-gray-700 mb-1">Énoncé de la question</label>
         <textarea
           className="w-full p-2 border rounded font-sans text-sm min-h-[60px]"
           value={safeContent.question}
           onChange={(e) => update("question", e.target.value)}
-          placeholder="Ex: Résoudre dans R l'équation f(x) = 0"
+          placeholder="Ex: Résoudre dans $\mathbb{R}$ l'équation $f(x) = 0$"
         />
       </div>
 
@@ -54,27 +45,27 @@ const QuestionEditor = ({ content, onUpdate }) => {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">
-            Points
-          </label>
+          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Points</label>
           <input
             type="number"
             className="w-full p-2 border rounded text-sm"
-            value={safeContent.points}
-            onChange={(e) => update("points", parseFloat(e.target.value))}
+            value={safeContent.points ?? ""}
+            onChange={(e) =>
+              update("points", e.target.value === "" ? "" : parseFloat(e.target.value))
+            }
+            onBlur={(e) => {
+              if (!(parseFloat(e.target.value) > 0)) update("points", 1);
+            }}
             min="0.5"
             step="0.5"
           />
         </div>
       </div>
 
-      {/* 3. SOLUTION SIMPLIFIÉE */}
+      {/* 3. SOLUTION */}
       <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-        <label className="block text-sm font-bold text-blue-900 mb-2 items-center gap-2">
-          Solution attendue
-        </label>
+        <label className="block text-sm font-bold text-blue-900 mb-2">Solution attendue</label>
 
-        {/* CHAMP INPUT AVEC PRÉFIXE VISUEL */}
         <div className="flex items-center gap-2">
           {safeContent.answerFormat === "set" && (
             <span className="font-bold text-blue-800 text-lg">S = {"{"}</span>
@@ -92,7 +83,7 @@ const QuestionEditor = ({ content, onUpdate }) => {
               safeContent.answerFormat === "set"
                 ? "@x1; @x2"
                 : safeContent.answerFormat === "interval"
-                  ? "]-\infty; 2]"
+                  ? "]-\\infty; 2]"
                   : "Valeur..."
             }
           />
@@ -103,17 +94,16 @@ const QuestionEditor = ({ content, onUpdate }) => {
         </div>
 
         <p className="text-[10px] text-blue-600 mt-2">
-          Ecrivez @a pour calculer a. Tout est en latex sauf le * pour la
+          Écrivez @a pour insérer la valeur de a. Tout est en LaTeX sauf le * pour la
           multiplication. Pas besoin de $ dans la réponse.
         </p>
       </div>
 
-      {/* 4. AIDE ET PÉDAGOGIE (NOUVELLE SECTION) */}
+      {/* 4. AIDE ET PÉDAGOGIE */}
       <div className="pt-4 border-t border-gray-200 space-y-3">
         <div>
           <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase mb-1">
-            <Lightbulb size={14} className="text-yellow-500" /> Indice
-            (Optionnel)
+            <Lightbulb size={14} className="text-yellow-500" /> Indice (Optionnel)
           </label>
           <textarea
             className="w-full p-2 border rounded text-sm h-20"
@@ -124,8 +114,7 @@ const QuestionEditor = ({ content, onUpdate }) => {
         </div>
         <div>
           <label className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase mb-1">
-            <BookOpen size={14} className="text-indigo-500" /> Explication de la
-            correction
+            <BookOpen size={14} className="text-indigo-500" /> Explication de la correction
           </label>
           <textarea
             className="w-full p-2 border rounded text-sm h-24"
@@ -138,14 +127,5 @@ const QuestionEditor = ({ content, onUpdate }) => {
     </div>
   );
 };
-
-const ToolBtn = ({ label, val, onClick, icon }) => (
-  <button
-    onClick={() => onClick(val)}
-    className="px-2 py-1 bg-white border border-blue-200 rounded text-xs font-bold text-blue-700 hover:bg-blue-100 flex items-center gap-1"
-  >
-    {icon} {label}
-  </button>
-);
 
 export default QuestionEditor;

@@ -1,44 +1,35 @@
-import React from 'react';
-import { evaluateExpression } from '../utils/evaluateExpression';
+import MathText from "../utils/mathRenderer";
 
-const StatsTableRenderer = ({ content, generatedValues }) => {
+const StatsTableRenderer = ({ content, variables }) => {
+  const headers = Array.isArray(content.headers) ? content.headers : [];
+  const rows = Array.isArray(content.rows) ? content.rows : [];
+
+  if (headers.length === 0) return null;
+
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-2 border-gray-800">
+      <table className="w-full border-2 border-gray-800 border-collapse">
         <thead>
           <tr className="bg-gray-100">
-            {content.headers.map((h, i) => (
-              <th key={i} className="border border-gray-800 p-2 font-bold">
-                {h}
+            {headers.map((h, i) => (
+              <th key={i} className="border border-gray-800 p-2 font-bold text-center">
+                <MathText content={h} variables={variables} />
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {content.rows.map((row, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-              {row.map((cell, j) => (
+          {rows.map((row, i) => (
+            <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+              {headers.map((_, j) => (
                 <td key={j} className="border border-gray-800 p-2 text-center">
-                  {evaluateExpression(cell, generatedValues)}
+                  <MathText content={row?.[j] ?? ""} variables={variables} />
                 </td>
               ))}
             </tr>
           ))}
         </tbody>
       </table>
-      
-      {/* Calculs statistiques optionnels */}
-      {content.showCalculations && (
-        <div className="mt-3 p-3 bg-blue-50 rounded border border-blue-200">
-          <p className="text-sm font-semibold text-blue-900 mb-2">Calculs :</p>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Total effectif : À calculer</div>
-            <div>Moyenne : À calculer</div>
-            <div>Médiane : À calculer</div>
-            <div>Écart-type : À calculer</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
